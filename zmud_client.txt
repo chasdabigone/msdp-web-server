@@ -1,6 +1,6 @@
 #CLASS 0
 #CLASS {server} {enable}
-#ALIAS buildData {{CHARACTER_NAME}{%char}{BLOOD}{@blood}{CLASS}{@class}{HEALTH}{@curHP}{HEALTH_MAX}{@maxHP}{MANA}{@curMana}{MANA_MAX}{@maxMana}{MOVEMENT}{@curMV}{MOVEMENT_MAX}{@maxMV}{WAIT_TIME}{@lag}{COMBAT_STYLE}{@style}{ALIGNMENT}{@align}@temp_affects@opponentHP@opponentName {} "server"}
+#ALIAS buildData {#VAR dataToSend {CHARACTER_NAME}{%char}{BLOOD}{@blood}{CLASS}{@class}{HEALTH}{@curHP}{HEALTH_MAX}{@maxHP}{MANA}{@curMana}{MANA_MAX}{@maxMana}{MOVEMENT}{@curMV}{MOVEMENT_MAX}{@maxMV}{WAIT_TIME}{@lag}{COMBAT_STYLE}{@style}{ALIGNMENT}{@align}@temp_affects@opponentHP@opponentName {} "server"}
 #ALIAS atconnect {#var connected 1 {} "server";#var dataToSendOld {} {} "server"}
 #ALIAS atdisconnect {#var connected 0 {} "server"}
 #ALIAS clearSpells {#FORALL @spellList {#var tempSpell %replace( %i, " ", "_") {} "server";#unvar spell_remain_@tempSpell "server"}}
