@@ -88,6 +88,11 @@ CONNECTION_TIMEOUT_SECONDS=10
 
 # Rust specific
 STATIC_DIR_PATH=./custom_static_path
+RATE_LIMIT_RPS=15.0 # The number of requests per second an IP is allowed on average. This is the rate at which tokens are refilled.
+RATE_LIMIT_BURST_CAPACITY=30.0 # The maximum number of tokens an IP's bucket can hold. This allows for short bursts.
+RATE_LIMIT_VIOLATION_THRESHOLD=50 # The number of throttled requests (violations) an IP can make before being banned.
+RATE_LIMIT_BAN_DURATION_SECONDS=600 # The duration (in seconds) for which an IP is banned after exceeding the violation threshold.
+RATE_LIMIT_CLEANUP_INTERVAL_SECONDS=1200 # How often (in seconds) the server cleans up stale IP address entries from its rate-limiting state to conserve memory.
 ```
 
 ## Components
