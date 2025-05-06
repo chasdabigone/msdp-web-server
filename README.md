@@ -1,4 +1,4 @@
-# MUD Data Relay & Web Viewer
+# MSDP Data Relay & Web Viewer
 
 This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer.
 
@@ -83,6 +83,10 @@ You'll need to install the appropriate script in your MUD client.
     *   You need to ensure your Tintin++ setup populates the `$msdp_info` variable with the desired `{key}{value}` data. This often involves configuring MSDP or other triggers in Tintin++.
     *   The default update interval is `0.5` seconds, configurable via the `#VAR update_interval` line.
     *   Sends data to `http://localhost:8080/update` using `curl`. Ensure `curl` is installed and accessible in your system's PATH.
+
+#### c. MUSHClient
+*   **Not Implemented Yet**: But it should be very similar to TinTin++
+
 
 ### 2. Backend Servers (Choose ONE)
 
