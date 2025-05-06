@@ -305,3 +305,6 @@ An IP starts with 10 tokens.
     (when host is `0.0.0.0`), ensure your firewall allows connections to the
     configured port.
 
+## Thank you
+
+* Thanks to Rathmonicus, Myrr, and Merit for helping test
