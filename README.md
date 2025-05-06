@@ -1,6 +1,6 @@
 # MSDP Data Relay & Web Viewer
 
-This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer.
+This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Compatible with any client that can send a http POST request.
 
 ![Web Client Screenshot](images/servershot.JPG)
 
@@ -11,8 +11,8 @@ Players often use MUD clients with scripting capabilities to enhance their gamep
 The core data transmission format from the MUD client to the server is a simple string of concatenated key-value pairs: `{key}{value}{key}{value}...`.
 
 Two backend server implementations are provided:
-1.  **Python Server**: Built with `aiohttp` for asynchronous handling.
-2.  **Rust Server**: Built with `axum` for performance and type safety.
+1.  **Python Server**: Built with `aiohttp` for asynchronous handling. Recommended for personal or light use.
+2.  **Rust Server**: Built with `axum` for performance and type safety. Recommended when performance matters (many users).
 
 You only need to run **one** of these server implementations. Both servers are configurable via environment variables.
 
@@ -36,10 +36,12 @@ You only need to run **one** of these server implementations. Both servers are c
 *   **Data Management**: Servers handle data pruning for inactive characters and connection timeouts.
 
 ## Architecture
+```
 +--------------+ HTTP POST ({key}{value}...)+-----------------+  WebSocket (JSON)    +----------------+
-| MUD Client   | ---------------------------> | Backend Server| ----------------->   | Web Viewer     |
+| MUD Client   | -------------------------> | Backend Server  | ----------------->   | Web Viewer     |
 | (ZMud/Tintin)|                            | (Python or Rust)|                      | (Browser)      |
 +--------------+                            +-----------------+                      +----------------+
+```
 
 1.  **MUD Client**: The player's MUD client (ZMud or Tintin++) runs a script
     that collects game data.
@@ -105,10 +107,11 @@ different host or port, you **must** update the URL in the client script.
     3.  Paste it directly into the ZMud command input line and press Enter. This
         will import all the necessary aliases, variables, and triggers into a
         ZMud class named "server".
-    4.  Ensure the "server" class is enabled.
+    4.  You will need to modify the prompt trigger to capture your own prompt AND fprompt (you may need 2 triggers).
     5.  **Modify URL if needed:** The script sends data to
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
         URL in the `#ALIAS sendData` line.
+    6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{myCharacter}
 *   **Functionality**:
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
     *   Automatically sends data on prompt updates if data has changed.
