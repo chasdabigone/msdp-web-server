@@ -86,7 +86,7 @@ BROADCAST_INTERVAL_SECONDS=0.1
 CONNECTION_TIMEOUT_SECONDS=10
 
 # Rust specific
-STATIC_DIR_PATH=./custom_static_path
+STATIC_DIR_PATH=./custom_static_path```
 
 ## Components
 
