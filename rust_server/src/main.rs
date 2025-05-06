@@ -1,8 +1,7 @@
-// Add necessary imports based on errors
 use std::time::{Duration, SystemTime}; // SystemTime is in std::time
 use headers::UserAgent; // UserAgent comes directly from the headers crate
 use tracing::trace; // Explicitly import the trace macro
- // For the parser FromResidual requirement
+use std::str::FromStr; // For Level::from_str and get_env_var parsing
 use axum::extract::connect_info::ConnectInfo; // To get peer address
 
 
@@ -27,13 +26,12 @@ use std::{
     net::SocketAddr,
     path::PathBuf,
     sync::Arc,
-    // Duration, SystemTime, UNIX_EPOCH moved to top level `use`
 };
 use tokio::{
     fs::File,
     io::AsyncReadExt,
     sync::{broadcast, Mutex},
-    time::{self, Instant}, // Removed SystemTime from here
+    time::{self, Instant},
 };
 // Remove unused ServeDir import if fallback_service remains commented out
 // use tower_http::services::ServeDir;
@@ -42,45 +40,47 @@ use tower_http::{
 };
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
- // Add Uuid for potential future use or better subscriber tracking
+use std::env;
+use dotenv::dotenv; // Requires `dotenv` crate in Cargo.toml
+use once_cell::sync::Lazy; // Requires `once_cell` crate in Cargo.toml
 
 // --- Configuration ---
-// ... (Keep Configuration as is) ...
-const HTTP_HOST: &str = "0.0.0.0";
-const HTTP_PORT: u16 = 8080;
-const PRUNE_INTERVAL_SECONDS: u64 = 60;
-const DATA_TIMEOUT_MINUTES: u64 = 30;
-const BROADCAST_INTERVAL_SECONDS: f64 = 0.2;
-const CONNECTION_TIMEOUT_SECONDS: u64 = 5;
-const LOG_LEVEL: Level = Level::INFO;
-const STATIC_DIR: &str = "static";
+fn get_env_var<T: std::str::FromStr>(name: &str, default: T) -> T {
+  env::var(name)
+      .ok()
+      .and_then(|val| val.parse().ok())
+      .unwrap_or(default)
+}
+
+fn get_env_var_string(name: &str, default: &str) -> String {
+  env::var(name).unwrap_or_else(|_| default.to_string())
+}
+
+// Lazy static for static directory path, read from env once
+static STATIC_DIR_PATH_CONFIG: Lazy<String> = Lazy::new(|| {
+    get_env_var_string("STATIC_DIR_PATH", "static")
+});
 
 
 // --- Custom Error Type ---
-// Add From<std::string::FromUtf8Error> to handle the specific error from String::from_utf8
 #[derive(Debug, thiserror::Error)]
 enum ParseError {
     #[error("Expected '{{' at index {0}, found '{1}'")]
     ExpectedOpenBrace(usize, char),
     #[error("Missing closing '}}' for key starting at brace {0}")]
     MissingKeyCloseBrace(usize),
-    // Removed: EmptyKey(usize),
     #[error("Expected '{{' for value of key '{key}' at index {index}, found '{found}'")]
     ExpectedValueOpenBrace { key: String, index: usize, found: char },
     #[error("Missing closing '}}' for value block of key '{0}' starting at {1}")]
     MissingValueCloseBrace(String, usize),
     #[error("Input ended prematurely after key '{0}'")]
     UnexpectedEndAfterKey(String),
-    // Removed: UnexpectedEndDuringWhitespace,
     #[error("UTF-8 conversion error: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
-    // Removed: FromUtf8Error (if you stick with std::str::from_utf8)
-    // Removed: InvalidNumber(String, String),
 }
 
 
 // --- Data Structures ---
-// ... (Keep Data Structures as is) ...
 type CharacterDataMap = HashMap<String, Value>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -91,7 +91,6 @@ struct CharacterInfo {
 }
 
 mod system_time_serde {
-    // Use std::time types here
     use serde::{self, Deserialize, Deserializer, Serializer};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -120,7 +119,6 @@ struct DeltaUpdate {
 }
 
 // --- Shared State ---
-// ... (Keep Shared State as is) ...
 struct AppStateInternal {
     character_data: DashMap<String, CharacterInfo>,
     pending_updates: Mutex<HashMap<String, CharacterDataMap>>,
@@ -133,7 +131,6 @@ type SharedState = Arc<AppStateInternal>;
 // --- Parser Logic (REVISED for Rust) ---
 
 fn parse_final_value(raw_value_block: &str) -> Value {
-    // ... (Keep parse_final_value as is) ...
     let val = raw_value_block.trim();
     if val.is_empty() {
         return Value::String("".to_string());
@@ -162,7 +159,6 @@ fn parse_final_value(raw_value_block: &str) -> Value {
     }
 }
 
-// Correct the UTF8 conversion part
 fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseError> {
     debug!("Starting STRICT parse. Input len={}", text.len());
     let text = text.trim();
@@ -175,20 +171,15 @@ fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseErr
     let bytes = text.as_bytes();
     let n = bytes.len();
     let mut i = 0;
-    let mut parse_error_occurred = false;
+    let mut parse_error_occurred = false; // For logging non-fatal issues if parsing continues partially
 
     while i < n {
-        // Skip whitespace before key's '{'
         while i < n && bytes[i].is_ascii_whitespace() { i += 1; }
         if i >= n { break; }
 
-        // --- 1. Expect and Parse Key ---
         if bytes[i] != b'{' {
             error!("STRICT PARSE: Expected '{{' for key start at index {}, found '{}'", i, bytes[i] as char);
-            // Use the dedicated error variant
              return Err(ParseError::ExpectedOpenBrace(i, bytes[i] as char));
-           // parse_error_occurred = true; // No longer needed if we return Err
-           // break;
         }
         let key_brace_start = i;
         let mut key_brace_end = i + 1;
@@ -199,25 +190,19 @@ fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseErr
         if key_brace_end >= n {
             error!("STRICT PARSE: Missing '}}' for key starting at brace {}", key_brace_start);
             return Err(ParseError::MissingKeyCloseBrace(key_brace_start));
-           // parse_error_occurred = true;
-           // break;
         }
 
         let key_slice = &bytes[key_brace_start + 1..key_brace_end];
-        // Trim whitespace using standard library methods for potentially non-ASCII spaces too
         let key_str_trimmed = std::str::from_utf8(key_slice)?.trim();
 
 
         if key_str_trimmed.is_empty() {
             error!("STRICT PARSE: Empty key found ending at {}", key_brace_end);
-            // Handle skipping value block (same logic as before)
              i = key_brace_end + 1;
             while i < n && bytes[i].is_ascii_whitespace() { i += 1; }
             if i >= n {
                 warn!("STRICT PARSE: Reached end after empty key brace.");
-                // Decide if this is an error or just end of valid input
-                // Return Ok(data) or Err(...) based on strictness
-                parse_error_occurred = true; // Keep track for final log
+                parse_error_occurred = true;
                 break;
             }
             if bytes[i] == b'{' {
@@ -241,42 +226,33 @@ fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseErr
                 }
                 if !skipped_value {
                     warn!("STRICT PARSE: Could not reliably skip value (unmatched braces?) after empty key near {}. Stopping parse.", key_brace_end);
-                    // Return error if skip fails and strictness required
                     parse_error_occurred = true;
                      break;
                  }
             } else {
                  error!("STRICT PARSE: Expected '{{' for value after empty key brace near {}, found '{}'. Stopping parse.", key_brace_end, bytes[i] as char);
-                // Return specific error
-                 parse_error_occurred = true;
+                 parse_error_occurred = true; // Consider if this should be a hard error. For now, it sets flag and breaks.
+                 // If this should be a fatal error for the whole parse:
+                 // return Err(ParseError::ExpectedValueOpenBrace { key: "EMPTY_KEY_FOLLOWUP".to_string(), index: i, found: bytes[i] as char });
                 break;
             }
-             continue; // Try parsing the next key after successful skip
+             continue;
         }
 
-        // Convert trimmed &str key to String
-        let key = key_str_trimmed.to_string(); // Convert here
+        let key = key_str_trimmed.to_string();
         debug!("STRICT PARSE: Found key: '{}' (braces {}-{})", key, key_brace_start, key_brace_end);
 
-
-        // --- Advance index past the key's closing brace '}' ---
         i = key_brace_end + 1;
 
-        // --- 2. Skip Whitespace before Value's opening '{' ---
         while i < n && bytes[i].is_ascii_whitespace() { i += 1; }
         if i >= n {
              error!("STRICT PARSE: Reached end of string after key '{}' before finding value's opening '{{'. Input likely truncated.", key);
              return Err(ParseError::UnexpectedEndAfterKey(key));
-            // parse_error_occurred = true;
-            // break;
         }
 
-        // --- 3. Expect and Parse Value ---
         if bytes[i] != b'{' {
             error!("STRICT PARSE: Expected '{{' for value of key '{}' at index {}, but found '{}'", key, i, bytes[i] as char);
              return Err(ParseError::ExpectedValueOpenBrace{key: key, index: i, found: bytes[i] as char});
-            // parse_error_occurred = true;
-            // break;
         }
         let value_block_start = i;
         debug!("STRICT PARSE: Value for '{}' starts with '{{' at {}. Scanning for matching brace.", key, value_block_start);
@@ -291,7 +267,6 @@ fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseErr
                     level -= 1;
                     if level == 0 {
                         let value_block_end = j;
-                        // Use std::str::from_utf8 here as well
                         let raw_value_block_str = std::str::from_utf8(&bytes[value_block_start..=value_block_end])?;
 
                         debug!(
@@ -322,14 +297,9 @@ fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseErr
         if !found_match {
             error!("STRICT PARSE: Matching '}}' not found for value block of key '{}' starting at {}. Input likely corrupt or truncated.", key, value_block_start);
              return Err(ParseError::MissingValueCloseBrace(key, value_block_start));
-           // parse_error_occurred = true;
-           // data.remove(&key); // No longer needed if we return Err
-           // debug!("STRICT PARSE: Removed key '{}' from result due to subsequent value parsing failure.", key);
-           // break;
         }
-    } // End of main parsing loop (while i < n)
+    }
 
-     // Log final status based on whether loop completed or exited early due to tracked error
      if parse_error_occurred {
          warn!("STRICT PARSE: Finished parsing prematurely due to non-fatal issue (e.g., empty key skip). Found {} valid key-value pairs.", data.len());
      } else if i >= n {
@@ -339,13 +309,11 @@ fn parse_strict_key_value_pairs(text: &str) -> Result<CharacterDataMap, ParseErr
              i, n, data.len(), String::from_utf8_lossy(&bytes[i..]).chars().take(50).collect::<String>());
      }
 
-
-    Ok(data) // Return the data collected so far even if a non-fatal issue occurred
+    Ok(data)
 }
 
 
 // --- HTTP Handler ---
-// ... (Keep handle_http_update as is) ...
 async fn handle_http_update(
     State(state): State<SharedState>,
     body: String,
@@ -361,12 +329,10 @@ async fn handle_http_update(
 
     match parse_strict_key_value_pairs(&body) {
         Ok(mut parsed_data) => {
-            if parsed_data.is_empty() && !body.trim().is_empty() { // Check again if parser returning empty is unexpected
+            if parsed_data.is_empty() && !body.trim().is_empty() {
                  error!("HTTP POST processing failed: Parser returned empty data from non-empty input. Input: '{}...'", log_msg_snippet);
-                 return Err(StatusCode::INTERNAL_SERVER_ERROR); // Indicate server-side parsing issue
+                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
             } else if parsed_data.is_empty() {
-                 // Input was genuinely empty or only whitespace, handled by initial check
-                 // This branch might be redundant now
                  warn!("HTTP POST: Input parsed to empty data, likely whitespace input.");
                  return Err(StatusCode::BAD_REQUEST);
             }
@@ -404,8 +370,6 @@ async fn handle_http_update(
                 }
                  info!("{} character data for: {}. Added to pending updates. Processing time: {:?}", action, char_name, start_time.elapsed());
             }
-
-
             Ok(StatusCode::OK)
         }
         Err(e) => {
@@ -416,31 +380,26 @@ async fn handle_http_update(
 }
 
 // --- WebSocket Handler ---
-// Get ConnectInfo here to access peer address
 async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<SharedState>,
     user_agent: Option<TypedHeader<UserAgent>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>, // Extract peer address
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let user_agent_str = user_agent.map_or_else(|| "Unknown".to_string(), |ua| ua.0.to_string()); // Access inner UserAgent
+    let user_agent_str = user_agent.map_or_else(|| "Unknown".to_string(), |ua| ua.0.to_string());
     debug!("WebSocket connection attempt from User-Agent: {}", user_agent_str);
     debug!("WebSocket Headers: {:?}", headers);
-
-    // Pass the address to the handler function
     ws.on_upgrade(move |socket| handle_socket(socket, state, user_agent_str, addr))
 }
 
 
 // --- Individual WebSocket Connection Logic ---
-// Accept peer_addr as an argument
 async fn handle_socket(mut socket: WebSocket, state: SharedState, user_agent: String, peer_addr: SocketAddr) {
     info!("WebSocket client connected: {} (User-Agent: {})", peer_addr, user_agent);
 
     let mut delta_rx = state.delta_tx.subscribe();
 
-    // --- Send Initial State Snapshot ---
      let initial_state: HashMap<String, CharacterDataMap> = state
          .character_data
          .iter()
@@ -470,7 +429,6 @@ async fn handle_socket(mut socket: WebSocket, state: SharedState, user_agent: St
           }
      }
 
-    // --- Main Loop: Listen for Broadcast Deltas and Client Messages ---
      loop {
          tokio::select! {
              msg_option = socket.recv() => {
@@ -537,21 +495,16 @@ async fn handle_socket(mut socket: WebSocket, state: SharedState, user_agent: St
              }
          }
      }
-
      info!("WebSocket client {} connection handler finished.", peer_addr);
      let _ = socket.close().await;
 }
 
 
 // --- Background Task: Pruning Old Data ---
-// ... (Keep prune_loop as is) ...
-async fn prune_loop(state: SharedState) {
-    let prune_interval = Duration::from_secs(PRUNE_INTERVAL_SECONDS);
-    let data_timeout = Duration::from_secs(DATA_TIMEOUT_MINUTES * 60);
+async fn prune_loop(state: SharedState, prune_interval: Duration, data_timeout: Duration) {
     info!("Starting prune loop. Interval: {:?}, Timeout: {:?}", prune_interval, data_timeout);
-
     let mut interval = time::interval(prune_interval);
-    interval.tick().await;
+    interval.tick().await; // Consume the initial immediate tick
 
     loop {
         interval.tick().await;
@@ -584,21 +537,17 @@ async fn prune_loop(state: SharedState) {
             }
              info!("Pruned {} inactive characters: {:?}. Marked for deletion broadcast.", pruned_count, names_to_prune);
         } else {
-             trace!("Prune check completed. No characters timed out."); // Use trace! here
+             trace!("Prune check completed. No characters timed out.");
         }
     }
 }
 
 
 // --- Background Task: Broadcasting Deltas and Checking Connection Timeouts ---
-// ... (Keep broadcast_loop as is) ...
-async fn broadcast_loop(state: SharedState) {
-    let broadcast_interval = Duration::from_secs_f64(BROADCAST_INTERVAL_SECONDS);
-    let connection_timeout = Duration::from_secs(CONNECTION_TIMEOUT_SECONDS);
+async fn broadcast_loop(state: SharedState, broadcast_interval: Duration, connection_timeout: Duration) {
      info!("Starting broadcast loop. Interval: {:?}, Connection Timeout: {:?}", broadcast_interval, connection_timeout);
-
     let mut interval = time::interval(broadcast_interval);
-    interval.tick().await;
+    interval.tick().await; // Consume the initial immediate tick
 
     loop {
         interval.tick().await;
@@ -619,16 +568,25 @@ async fn broadcast_loop(state: SharedState) {
         });
 
         if !disconnected_names.is_empty() {
-            let mut pending_updates_guard = state.pending_updates.lock().await;
-            let mut pending_deletions_guard = state.pending_deletions.lock().await;
+            // These locks are now correctly scoped for just updating character_data for disconnects
+            // The delta preparation logic below will pick these up as updates.
+            // Note: pending_updates_guard and pending_deletions_guard are NOT locked here.
+            // That happens later in the delta preparation stage.
 
-            for name in &disconnected_names { // Borrow name here
+            for name in &disconnected_names {
                  if let Some(mut char_info_entry) = state.character_data.get_mut(name) {
                       if char_info_entry.data.get("CONNECTED").and_then(|v| v.as_str()) == Some("YES") {
                           info!("Marking '{}' as disconnected due to timeout.", name);
                            char_info_entry.data.insert("CONNECTED".to_string(), Value::String("NO".to_string()));
-                           pending_updates_guard.insert(name.clone(), char_info_entry.data.clone());
-                           pending_deletions_guard.remove(name);
+                           // This modification to char_info_entry.data directly modifies the DashMap.
+                           // Now, we need to ensure this change is captured for broadcast.
+                           // We add it to pending_updates.
+                           { // New scope for lock
+                               let mut pending_updates_guard = state.pending_updates.lock().await;
+                               let mut pending_deletions_guard = state.pending_deletions.lock().await; // Lock to ensure consistency if a prune happens
+                               pending_updates_guard.insert(name.clone(), char_info_entry.data.clone());
+                               pending_deletions_guard.remove(name); // If it was marked for deletion, unmark it as it's an update now
+                           }
                            needs_broadcast = true;
                       }
                  }
@@ -642,20 +600,19 @@ async fn broadcast_loop(state: SharedState) {
             let mut pending_deletions_guard = state.pending_deletions.lock().await;
 
             if !pending_updates_guard.is_empty() || !pending_deletions_guard.is_empty() {
-                needs_broadcast = true; // Set broadcast flag *before* taking data
+                needs_broadcast = true;
 
                 let updates = std::mem::take(&mut *pending_updates_guard);
                 let deletions = std::mem::take(&mut *pending_deletions_guard)
                                     .into_iter()
                                     .collect();
-
                 delta_to_send = Some(DeltaUpdate { updates, deletions });
             } else {
                 delta_to_send = None;
             }
         }
 
-        if needs_broadcast { // Check the flag set above or by disconnects
+        if needs_broadcast {
             if let Some(delta) = delta_to_send {
                 let num_subscribers = state.delta_tx.receiver_count();
                  if num_subscribers > 0 {
@@ -671,11 +628,8 @@ async fn broadcast_loop(state: SharedState) {
                  } else {
                      debug!("No subscribers connected for delta broadcast.");
                  }
-            } else {
-                 // This can happen if only disconnects occurred, which already modified pending_updates
-                 // Or if needs_broadcast was true from a previous iteration but data was sent? Less likely.
-                 // Let's assume the disconnect logic correctly set pending_updates if needed.
-                 trace!("Broadcast check: Flag was set, but no new delta prepared (likely only disconnect status changes handled).");
+            } else if disconnected_names.is_empty() { // Only log if no delta AND no disconnects (which should have made a delta)
+                 trace!("Broadcast check: Flag was set, but no new delta prepared.");
             }
         } else {
              trace!("Broadcast check: No changes detected.");
@@ -685,9 +639,9 @@ async fn broadcast_loop(state: SharedState) {
 
 
 // --- Static File Handler ---
-// ... (Keep handle_root as is) ...
 async fn handle_root() -> impl IntoResponse {
-    let html_file_path = PathBuf::from(STATIC_DIR).join("subscriber_client.html");
+    // Use the Lazy static configuration value
+    let html_file_path = PathBuf::from(&*STATIC_DIR_PATH_CONFIG).join("subscriber_client.html");
     info!("Serving root request with file: {:?}", html_file_path);
 
     match File::open(&html_file_path).await {
@@ -709,16 +663,42 @@ async fn handle_root() -> impl IntoResponse {
 
 
 // --- Main Application Setup ---
-// ... (Keep main setup mostly as is) ...
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenv().ok(); // Load environment variables from .env file
+
+    // --- Configuration Loading ---
+    let http_host = get_env_var_string("HTTP_HOST", "0.0.0.0");
+    let http_port = get_env_var("HTTP_PORT", 8080u16);
+    let prune_interval_seconds = get_env_var("PRUNE_INTERVAL_SECONDS", 60u64);
+    let data_timeout_minutes = get_env_var("DATA_TIMEOUT_MINUTES", 30u64);
+    let broadcast_interval_seconds = get_env_var("BROADCAST_INTERVAL_SECONDS", 0.2f64);
+    let connection_timeout_seconds = get_env_var("CONNECTION_TIMEOUT_SECONDS", 5u64);
+
+    let log_level_str = get_env_var_string("LOG_LEVEL", "INFO");
+    let log_level = Level::from_str(&log_level_str.to_lowercase())
+                        .unwrap_or(Level::INFO);
+
+    // STATIC_DIR_PATH is handled by the STATIC_DIR_PATH_CONFIG Lazy static
+
+    // --- Tracing Initialization ---
     tracing_subscriber::registry()
         .with(fmt::layer())
-        .with(EnvFilter::from_default_env().add_directive(LOG_LEVEL.into()))
+        .with(EnvFilter::from_default_env().add_directive(log_level.into()))
         .init();
 
     info!("Starting server...");
-    info!("Log level set to: {:?}", LOG_LEVEL);
+    info!("Log level set to: {:?}", log_level);
+    info!("HTTP Host: {}", http_host);
+    info!("HTTP Port: {}", http_port);
+    info!("Static Directory: {}", &*STATIC_DIR_PATH_CONFIG); // Log the static dir path
+
+    // --- Durations for background tasks ---
+    let prune_interval_duration = Duration::from_secs(prune_interval_seconds);
+    let data_timeout_duration = Duration::from_secs(data_timeout_minutes * 60);
+    let broadcast_interval_duration = Duration::from_secs_f64(broadcast_interval_seconds);
+    let connection_timeout_duration = Duration::from_secs(connection_timeout_seconds);
+
 
     let (delta_tx, _) = broadcast::channel::<DeltaUpdate>(100);
 
@@ -731,35 +711,34 @@ async fn main() -> anyhow::Result<()> {
 
     let prune_state = Arc::clone(&shared_state);
     let prune_handle = tokio::spawn(async move {
-        prune_loop(prune_state).await;
+        prune_loop(prune_state, prune_interval_duration, data_timeout_duration).await;
     });
 
     let broadcast_state = Arc::clone(&shared_state);
     let broadcast_handle = tokio::spawn(async move {
-        broadcast_loop(broadcast_state).await;
+        broadcast_loop(broadcast_state, broadcast_interval_duration, connection_timeout_duration).await;
     });
 
     let app = Router::new()
         .route("/update", post(handle_http_update))
         .route("/", get(handle_root))
-        .route("/ws", get(ws_handler)) // Ensure this path matches client
+        .route("/ws", get(ws_handler))
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(|response: &Response, latency: Duration, _span: &tracing::Span| {
-                    info!(status = ?response.status(), latency = ?latency, "Processed request"); // Improved trace log
+                    info!(status = ?response.status(), latency = ?latency, "Processed request");
                 }),
         );
 
-
-    let addr_str = format!("{}:{}", HTTP_HOST, HTTP_PORT);
-    let addr: SocketAddr = addr_str.parse()?; // Parse host/port string
+    let addr_str = format!("{}:{}", http_host, http_port);
+    let addr: SocketAddr = addr_str.parse()?;
     info!("HTTP/WebSocket server listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()) // Use connect_info
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal(prune_handle, broadcast_handle))
         .await?;
 
@@ -768,7 +747,6 @@ async fn main() -> anyhow::Result<()> {
 }
 
 // --- Graceful Shutdown Signal Handler ---
-// ... (Keep shutdown_signal as is) ...
 async fn shutdown_signal(
     prune_handle: tokio::task::JoinHandle<()>,
     broadcast_handle: tokio::task::JoinHandle<()>,

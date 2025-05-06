@@ -9,19 +9,27 @@ import time
 import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+import os 
+from dotenv import load_dotenv 
 
-# --- Configuration (REVISED) ---
-SERVER_HOST = "localhost"
-SERVER_PORT = 8080
-PRUNE_INTERVAL_SECONDS = 60
-DATA_TIMEOUT_MINUTES = 30
-BROADCAST_INTERVAL_SECONDS = 0.2
-CONNECTION_TIMEOUT_SECONDS = 3.0
-LOG_LEVEL = logging.DEBUG
+load_dotenv() 
+
+# --- Configuration ---
+SERVER_HOST = os.getenv("SERVER_HOST", "localhost")
+SERVER_PORT = int(os.getenv("SERVER_PORT", 8080))
+PRUNE_INTERVAL_SECONDS = int(os.getenv("PRUNE_INTERVAL_SECONDS", 60))
+DATA_TIMEOUT_MINUTES = int(os.getenv("DATA_TIMEOUT_MINUTES", 30))
+BROADCAST_INTERVAL_SECONDS = float(os.getenv("BROADCAST_INTERVAL_SECONDS", 0.2))
+CONNECTION_TIMEOUT_SECONDS = float(os.getenv("CONNECTION_TIMEOUT_SECONDS", 5.0)) 
+
+# Convert LOG_LEVEL string from .env to logging level constant
+log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = getattr(logging, log_level_str, logging.INFO)
 
 # --- Paths and Globals ---
 SCRIPT_DIR = Path(__file__).parent
 STATIC_DIR = SCRIPT_DIR / "static"
+
 character_data = {}
 subscribers = set()
 STATE_LOCK = asyncio.Lock()
