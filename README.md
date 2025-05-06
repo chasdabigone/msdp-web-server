@@ -296,7 +296,7 @@ An IP starts with 10 tokens.
 *   If it tries to send a request when the bucket is empty, it gets a `429 Too Many Requests` and its violation counter increases.
 *   If it continues to send requests while throttled and hits the `RATE_LIMIT_VIOLATION_THRESHOLD`, it will be banned.
 
-    ## General Configuration Notes
+## General Configuration Notes
 
 *   **Server Address Consistency**: Ensure the MUD client scripts, the web
     viewer's JavaScript constants, and the server's actual listening address
