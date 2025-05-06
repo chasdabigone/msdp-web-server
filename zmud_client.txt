@@ -1,0 +1,27 @@
+#CLASS 0
+#CLASS {server} {enable}
+#ALIAS buildData {{CHARACTER_NAME}{%char}{BLOOD}{@blood}{CLASS}{@class}{HEALTH}{@curHP}{HEALTH_MAX}{@maxHP}{MANA}{@curMana}{MANA_MAX}{@maxMana}{MOVEMENT}{@curMV}{MOVEMENT_MAX}{@maxMV}{WAIT_TIME}{@lag}{COMBAT_STYLE}{@style}{ALIGNMENT}{@align}@temp_affects@opponentHP@opponentName {} "server"}
+#ALIAS atconnect {#var connected 1 {} "server";#var dataToSendOld {} {} "server"}
+#ALIAS atdisconnect {#var connected 0 {} "server"}
+#ALIAS clearSpells {#FORALL @spellList {#var tempSpell %replace( %i, " ", "_") {} "server";#unvar spell_remain_@tempSpell "server"}}
+#ALIAS sendData {#IF (@connected == 1) {#VAR http %comcreate( "MSXML2.XMLHTTP.6.0") {} "server";#CALL @http.open("POST", "http://129.158.239.187:8080/update", 1);#CALL @http.setRequestHeader("Content-Type", "text/plain; charset=utf-8");#CALL @http.send(@dataToSend);#VAR dataToSendOld @dataToSend}}
+ #VAR spellList {mystical vision|fly|float|true sight|luths nadur|ogre might|kindred strength|dragon wit|sagacity|slink|trollish vigor|elven beauty|brawn|acumen|sapience|adroitness|adamant|limber|might of the fiend|quickening|mind fortress|feline grace|ursine brawn|prophetic aura|mutiny|bear spirit|wolf cunning|boar hide|danger sense|sanctuary|greater sanctuary|protection|sacral divinity|benefic aura|defense against undead|defense against devout|providence|armor|shield|sylvan shell|sylvan mist|stone skin|sgorr craiceann|ethereal web|granite skin|heighten defense|flesh armor|divine armor|conviction|demonskin|dragonskin|antimagic shell|inner warmth|blazeward|eldritch sphere|ethereal shield|shadowform|valiance|confidence|prismatic shield|demonic aura|hellskin|dance of vines|boannaich nadur|iron veil|ward of the divine|spectral screen|endure elements|respite|nimbus of light|cloud of darkness|acidward|grounding|alertness|aquaeforme|snake blessing|spirit ward|bless|minor invocation|mass blessing|oaken consecration|forest prayer|ritual blessing|fireshield|iceshield|shockshield|acidmist|deathsphere|lightshield|frostshield}
+#ALARM "decrementor" {-3} {#VAR temp_affects_old @temp_affects {} "server";#VAR temp_affects {} {} "server";#FORALL @spellList {#VAR curSpell %replace( %i, " ", "_") {} "server";#IF (@{spell_remain_@curSpell} >= 1) {#MATH spell_remain_@curSpell (@{spell_remain_@curSpell}-1);#VAR temp_affects %concat( @temp_affects, "{", %i, "}{", @{spell_remain_@curSpell}, "}") {} "server"} {#UNVAR spell_remain_@curSpell "server"}};#VAR temp_affects {%concat( "{AFFECTS}{", @temp_affects, "}")} {} "server";buildData;sendData}
+#TRIGGER {^You pass your hands around your body...} {clearSpells}
+#TRIGGER {^Affected:(%s)~((*)~)(%s)(*)(%s)} {#var spellTime %trim( %2) {} "server";#var spellName %trim( %4) {} "server";#var spellName %replace( @spellName, " ", "_") {} "server";#var spell_remain_@spellName @spellTime {} "server"}
+#VAR temp_affects {}
+#VAR maxHP {}
+#VAR curHP {}
+#VAR curMana {}
+#VAR maxMana {}
+#VAR spellTime {}
+#VAR tempSpell {} {}
+#VAR connected {1} {}
+#VAR dataToSend {}
+#VAR http {}
+#VAR spellName {}
+#VAR curSpell {}
+#VAR dataToSend {}
+#VAR dataToSendOld {}
+#TRIGGER {(%d)/(%d)hp (%d)/(%d)m} {#var curHP {%1} {} "server";#var maxHP {%2} {} "server";#var curMana {%3} {} "server";#var maxMana {%4} {} "server";buildData;#IF {@dataToSend != @dataToSendOld} {sendData}} "" {prompt}
+#CLASS 0

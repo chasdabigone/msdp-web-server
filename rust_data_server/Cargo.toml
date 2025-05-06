@@ -1,0 +1,27 @@
+[package]
+name = "rust_data_server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] } # Async runtime, sync primitives, timers
+axum = { version = "0.7", features = ["ws", "macros"] } # Web framework, WebSockets
+axum-extra = { version = "0.9", features = ["typed-header"] }
+serde = { version = "1", features = ["derive"] } # Serialization/Deserialization framework
+serde_json = "1" # JSON support for serde
+tracing = "0.1" # Logging framework
+tracing-subscriber = { version = "0.3", features = ["env-filter"] } # Logging output/filtering
+chrono = { version = "0.4", features = ["serde"] } # Time/Date utilities
+futures = "0.3" # Used for stream utilities with WebSockets
+dashmap = "5.5" # Concurrent HashMap (simpler locking for character_data)
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] } # Underlying WebSocket library used by axum
+anyhow = "1.0" # Flexible error handling
+thiserror = "1.0" # For defining custom errors
+tower-http = { version = "0.5", features = ["trace", "fs"] } # HTTP middleware (tracing, static files)
+uuid = { version = "1", features = ["v4", "serde"] } # Unique IDs for subscribers (optional but good practice)
+headers = "0.4" # For checking WebSocket upgrade headers
+mime_guess = "2.0" # For serving static file content type
+tokio-util = { version = "0.7", features = ["codec"] } # For FramedRead used in static file serving
+
+# Optional: Faster JSON (but serde_json is usually fine)
+# simd-json = { version = "0.13", features = ["serde_impl"] }
