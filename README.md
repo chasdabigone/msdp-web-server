@@ -36,10 +36,12 @@ You only need to run **one** of these server implementations. Both servers are c
 *   **Data Management**: Servers handle data pruning for inactive characters and connection timeouts.
 
 ## Architecture
+```
 +--------------+ HTTP POST ({key}{value}...)+-----------------+  WebSocket (JSON)    +----------------+
-| MUD Client   | ---------------------------> | Backend Server| ----------------->   | Web Viewer     |
+| MUD Client   | -------------------------> | Backend Server  | ----------------->   | Web Viewer     |
 | (ZMud/Tintin)|                            | (Python or Rust)|                      | (Browser)      |
 +--------------+                            +-----------------+                      +----------------+
+```
 
 1.  **MUD Client**: The player's MUD client (ZMud or Tintin++) runs a script
     that collects game data.
