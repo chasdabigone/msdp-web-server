@@ -4,24 +4,21 @@ name = "rust_msdp_server"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-axum = { version = "0.7", features = ["ws", "macros"] }
+axum = "0.7"
 axum-extra = { version = "0.9", features = ["typed-header"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] } # Ensure fmt is here
-chrono = { version = "0.4", features = ["serde"] }
-# futures = "0.3" # Not strictly needed with axum 0.7 WebSocket API
 dashmap = "5.5"
-# tokio-tungstenite = { version = "0.21", features = ["native-tls"] } # Axum handles this
-anyhow = "1.0"
-thiserror = "1.0"
-tower-http = { version = "0.5", features = ["trace", "fs"] }
-# uuid = { version = "1", features = ["v4", "serde"] } # Not used yet
-headers = "0.4"
-mime_guess = "2.0"
 dotenv = "0.15"
-once_cell = "1.18" # Or newer
-# tokio-util = { version = "0.7", features = ["codec"] } # Not strictly needed for basic static file
+headers = "0.4" # Check for latest 0.4.x version if UserAgent is needed directly
+mime_guess = "2.0"
+once_cell = "1.19"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.4", features = ["full"] } # Ensure "full" or necessary features for Layer/Service
+tower-http = { version = "0.5", features = ["trace", "fs"] } # Added "fs" for ServeDir if used later
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+anyhow = "1.0" # For main's Result

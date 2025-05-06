@@ -239,6 +239,57 @@ Server sends JSON to `/ws`.
       "deletions": ["MyChar3"]
     }
     ```
+## Rate Limiting (Rust Server Only)
+
+The Rust server implements a rate limiting mechanism to protect the `/update` HTTP endpoint from abuse and ensure fair usage. It uses a token bucket algorithm applied on a per-IP address basis.
+
+### How it Works
+
+For each unique IP address making requests to the `/update` endpoint, the server maintains a "bucket" of tokens.
+
+1.  **Token Refill**: Tokens are added to each IP's bucket at a constant rate, defined by `RATE_LIMIT_RPS` (Requests Per Second).
+2.  **Burst Capacity**: Each bucket has a maximum capacity, defined by `RATE_LIMIT_BURST_CAPACITY`. This allows clients to make a burst of requests exceeding the `RPS` for a short period, as long as they have accumulated enough tokens.
+3.  **Request Handling**:
+    *   When a request arrives from an IP, the server first checks if the IP is currently banned. If so, a `403 Forbidden` status is returned.
+    *   If not banned, the server attempts to consume one token from the IP's bucket.
+    *   **Allowed**: If a token is available, it's consumed, the request is processed, and the IP's violation counter (see below) is decremented (if it was above zero).
+    *   **Throttled**: If no token is available, the request is throttled, and a `429 Too Many Requests` status is returned. The IP's violation counter is incremented.
+4.  **Violation Tracking and Banning**:
+    *   Each time an IP is throttled (i.e., makes a request without sufficient tokens), its violation counter increases.
+    *   If an IP accumulates `RATE_LIMIT_VIOLATION_THRESHOLD` violations, it is banned for a duration specified by `RATE_LIMIT_BAN_DURATION_SECONDS`.
+    *   During a ban, all requests from that IP to `/update` will receive a `403 Forbidden` status.
+    *   Once a ban expires, the IP can make requests again, and its violation counter is reset.
+    *   Successfully processed requests (when a token is available) will gradually decrease the violation counter, allowing well-behaved clients to recover from accidental minor bursts.
+5.  **State Cleanup**: To manage memory, the server periodically cleans up internal state for IP addresses that have been inactive for an extended period and are not currently banned, as configured by `RATE_LIMIT_CLEANUP_INTERVAL_SECONDS`.
+
+### Configuration
+
+The rate limiting behavior is controlled by the following environment variables:
+
+*   `RATE_LIMIT_RPS` (float, e.g., `5.0`):
+    The number of requests per second an IP is allowed on average. This is the rate at which tokens are refilled.
+*   `RATE_LIMIT_BURST_CAPACITY` (float, e.g., `15.0`):
+    The maximum number of tokens an IP's bucket can hold. This allows for short bursts. For example, with RPS=5 and Burst=15, an IP can make 15 requests quickly before being throttled to 5 RPS.
+*   `RATE_LIMIT_VIOLATION_THRESHOLD` (integer, e.g., `20`):
+    The number of throttled requests (violations) an IP can make before being banned.
+*   `RATE_LIMIT_BAN_DURATION_SECONDS` (integer, e.g., `300`):
+    The duration (in seconds) for which an IP is banned after exceeding the violation threshold. (e.g., 300 = 5 minutes).
+*   `RATE_LIMIT_CLEANUP_INTERVAL_SECONDS` (integer, e.g., `600`):
+    How often (in seconds) the server cleans up stale IP address entries from its rate-limiting state to conserve memory. (e.g., 600 = 10 minutes).
+
+These variables should be set in your `.env` file or your deployment environment.
+
+### Example Scenario
+
+*   `RATE_LIMIT_RPS=2.0`
+*   `RATE_LIMIT_BURST_CAPACITY=10.0`
+
+An IP starts with 10 tokens.
+*   It can immediately send 10 requests to `/update`.
+*   After this burst, its token bucket is empty.
+*   It must now wait for tokens to refill. Tokens are refilled at 2 per second.
+*   If it tries to send a request when the bucket is empty, it gets a `429 Too Many Requests` and its violation counter increases.
+*   If it continues to send requests while throttled and hits the `RATE_LIMIT_VIOLATION_THRESHOLD`, it will be banned.
 
     ## General Configuration Notes
 
