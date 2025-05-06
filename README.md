@@ -84,6 +84,10 @@ You'll need to install the appropriate script in your MUD client.
     *   The default update interval is `0.5` seconds, configurable via the `#VAR update_interval` line.
     *   Sends data to `http://localhost:8080/update` using `curl`. Ensure `curl` is installed and accessible in your system's PATH.
 
+#### c. MUSHClient
+*   **Not Implemented Yet**: But it should be very similar to TinTin++
+
+
 ### 2. Backend Servers (Choose ONE)
 
 Both servers listen on `localhost:8080` by default (Python) or `0.0.0.0:8080` (Rust, making it accessible on your local network).
