@@ -1,4 +1,4 @@
-# MUD Data Relay & Web Viewer
+# MSDP Data Relay & Web Viewer
 
 This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer.
 
