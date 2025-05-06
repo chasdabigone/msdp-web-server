@@ -72,7 +72,8 @@ the respective server's root directory (`python_server/.env` or
 file if it exists.
 
 **Example `.env` file:**
-```dotenv
+```
+dotenv
 # Common for both servers (use appropriate variable name)
 # For Python: SERVER_HOST=0.0.0.0
 # For Rust:   HTTP_HOST=0.0.0.0
@@ -86,7 +87,8 @@ BROADCAST_INTERVAL_SECONDS=0.1
 CONNECTION_TIMEOUT_SECONDS=10
 
 # Rust specific
-STATIC_DIR_PATH=./custom_static_path```
+STATIC_DIR_PATH=./custom_static_path
+```
 
 ## Components
 
