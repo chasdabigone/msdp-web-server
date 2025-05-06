@@ -11,8 +11,8 @@ Players often use MUD clients with scripting capabilities to enhance their gamep
 The core data transmission format from the MUD client to the server is a simple string of concatenated key-value pairs: `{key}{value}{key}{value}...`.
 
 Two backend server implementations are provided:
-1.  **Python Server**: Built with `aiohttp` for asynchronous handling.
-2.  **Rust Server**: Built with `axum` for performance and type safety.
+1.  **Python Server**: Built with `aiohttp` for asynchronous handling. Recommended for personal or light use.
+2.  **Rust Server**: Built with `axum` for performance and type safety. Recommended when performance matters (many users).
 
 You only need to run **one** of these server implementations. Both servers are configurable via environment variables.
 
