@@ -2,6 +2,8 @@
 
 This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer.
 
+![Web Client Screenshot](images/servershot.JPG)
+
 ## Overview
 
 Players often use MUD clients with scripting capabilities to enhance their gameplay. This system allows these clients to send character status, combat information, and other relevant game data to a central server. The server processes this data and makes it available via a WebSocket connection to a web interface, allowing users (or perhaps party members, GMs, etc.) to view character information in a rich, graphical format in their web browser.
@@ -12,7 +14,7 @@ Two backend server implementations are provided:
 1.  **Python Server**: Built with `aiohttp` for asynchronous handling.
 2.  **Rust Server**: Built with `axum` for performance and type safety.
 
-You only need to run **one** of these server implementations.
+You only need to run **one** of these server implementations. Both servers are configurable via environment variables.
 
 ## Features
 
@@ -21,6 +23,7 @@ You only need to run **one** of these server implementations.
 *   **Dual Server Implementations**:
     *   Python server for ease of development and common Python ecosystems.
     *   Rust server for high performance and robustness.
+*   **Configurable Servers**: Key server parameters (host, port, timeouts, logging) can be set using environment variables or a `.env` file.
 *   **Real-time Web Viewer**:
     *   Displays character cards with stats (HP, Mana/Blood), class, lag, opponent info, affects, and more.
     *   Supports multiple character cards (configurable up to 16 by default).
@@ -33,24 +36,55 @@ You only need to run **one** of these server implementations.
 *   **Data Management**: Servers handle data pruning for inactive characters and connection timeouts.
 
 ## Architecture
-+--------------+ HTTP POST ({key}{value}...) +-----------------+ WebSocket (JSON) +----------------+
-| MUD Client | ------------------------------------> | Backend Server | -------------------------> | Web Viewer |
-| (ZMud/Tintin)| | (Python or Rust)| | (Browser) |
-+--------------+ +-----------------+ +----------------+
-1.  **MUD Client**: The player's MUD client (ZMud or Tintin++) runs a script that collects game data.
-2.  **Data Transmission**: The script periodically sends this data as a `{key}{value}` string via an HTTP POST request to the chosen backend server.
++--------------+ HTTP POST ({key}{value}...)+-----------------+  WebSocket (JSON)    +----------------+
+| MUD Client   | ---------------------------> | Backend Server| ----------------->   | Web Viewer     |
+| (ZMud/Tintin)|                            | (Python or Rust)|                      | (Browser)      |
++--------------+                            +-----------------+                      +----------------+
+
+1.  **MUD Client**: The player's MUD client (ZMud or Tintin++) runs a script
+    that collects game data.
+2.  **Data Transmission**: The script periodically sends this data as a
+    `{key}{value}` string via an HTTP POST request to the chosen backend
+    server's `/update` endpoint.
 3.  **Backend Server**:
     *   Receives the data string on its `/update` endpoint.
     *   Parses the string into a structured format (key-value map).
     *   Stores the character data and timestamps it.
     *   Manages data for multiple characters.
-    *   Handles pruning of old data and client connection status.
-    *   Broadcasts updates (full state on new connection, deltas thereafter) as JSON over a WebSocket connection from its `/ws` endpoint.
+    *   Handles pruning of old data and client connection status based on
+        configurable timeouts.
+    *   Broadcasts updates (full state on new connection, deltas thereafter)
+        as JSON over a WebSocket connection from its `/ws` endpoint.
     *   Serves the web viewer HTML page from its root (`/`) endpoint.
 4.  **Web Viewer**:
     *   A static HTML page (`subscriber_client.html`) with JavaScript.
     *   Connects to the server's WebSocket endpoint.
     *   Receives JSON data and dynamically renders character cards.
+
+    ## Server Configuration (Environment Variables)
+
+Both Python and Rust servers can be configured using environment variables. You
+can set these variables directly in your shell or by creating a `.env` file in
+the respective server's root directory (`python_server/.env` or
+`rust_server/.env`). The servers will automatically load variables from this
+file if it exists.
+
+**Example `.env` file:**
+```dotenv
+# Common for both servers (use appropriate variable name)
+# For Python: SERVER_HOST=0.0.0.0
+# For Rust:   HTTP_HOST=0.0.0.0
+HTTP_PORT=8081
+LOG_LEVEL=DEBUG
+
+# Server-specific or common behavior control
+PRUNE_INTERVAL_SECONDS=120
+DATA_TIMEOUT_MINUTES=60
+BROADCAST_INTERVAL_SECONDS=0.1
+CONNECTION_TIMEOUT_SECONDS=10
+
+# Rust specific
+STATIC_DIR_PATH=./custom_static_path
 
 ## Components
 
@@ -58,39 +92,49 @@ You only need to run **one** of these server implementations.
 
 You'll need to install the appropriate script in your MUD client.
 
+**Important:** The client scripts default to sending data to
+`http://localhost:8080/update`. If you configure your server to use a
+different host or port, you **must** update the URL in the client script.
+
 #### a. ZMud Client
 
 *   **File**: `zmud_client.txt`
 *   **Setup**:
     1.  Open ZMud.
     2.  Copy the **entire content** of `zmud_client.txt`.
-    3.  Paste it directly into the ZMud command input line and press Enter. This will import all the necessary aliases, variables, and triggers into a ZMud class named "server".
+    3.  Paste it directly into the ZMud command input line and press Enter. This
+        will import all the necessary aliases, variables, and triggers into a
+        ZMud class named "server".
     4.  Ensure the "server" class is enabled.
+    5.  **Modify URL if needed:** The script sends data to
+        `http://localhost:8080/update`. If your server runs elsewhere, edit the
+        URL in the `#ALIAS sendData` line.
 *   **Functionality**:
-    *   Defines an alias `buildData` to construct the `{key}{value}` payload using various ZMud variables (e.g., `@curHP`, `@maxHP`, `@lag`, `@style`, `@align`, spell affects).
+    *   Defines an alias `buildData` to construct the `{key}{value}` payload.
     *   Automatically sends data on prompt updates if data has changed.
-    *   Includes a sophisticated spell/affect duration tracking system that decrements timers and includes them in the payload under the `AFFECTS` key.
-    *   Sends data to `http://localhost:8080/update`.
+    *   Includes a spell/affect duration tracking system.
 
 #### b. Tintin++ Client
 
 *   **File**: `tintin_client.txt`
 *   **Setup**:
     1.  Copy the content of `tintin_client.txt`.
-    2.  Add this script to your existing Tintin++ script file (e.g., your main `.tin` file) or create a new one and load it.
+    2.  Add this script to your existing Tintin++ script file or create a new one.
+    3.  **Modify URL if needed:** The script sends data to
+        `http://localhost:8080/update` using `curl`. If your server runs
+        elsewhere, edit this URL.
+    4.  Ensure `curl` is installed and accessible in your system's PATH.
 *   **Functionality**:
-    *   Uses a `#ticker` to periodically send the content of the `$msdp_info` variable.
-    *   You need to ensure your Tintin++ setup populates the `$msdp_info` variable with the desired `{key}{value}` data. This often involves configuring MSDP or other triggers in Tintin++.
-    *   The default update interval is `0.5` seconds, configurable via the `#VAR update_interval` line.
-    *   Sends data to `http://localhost:8080/update` using `curl`. Ensure `curl` is installed and accessible in your system's PATH.
+    *   Uses a `#ticker` to periodically send the content of the `$msdp_info`
+        variable.
+    *   Ensure your Tintin++ setup populates `$msdp_info`.
+    *   Default update interval is `0.5` seconds (configurable via
+        `#VAR update_interval`).
 
-#### c. MUSHClient
-*   **Not Implemented Yet**: But it should be very similar to TinTin++
-
+#### a. MUSH Client
+    * Not yet implemented. Similar to TinTin++
 
 ### 2. Backend Servers (Choose ONE)
-
-Both servers listen on `localhost:8080` by default (Python) or `0.0.0.0:8080` (Rust, making it accessible on your local network).
 
 #### a. Python Server
 
@@ -100,23 +144,28 @@ Both servers listen on `localhost:8080` by default (Python) or `0.0.0.0:8080` (R
     *   Python 3.7+
     *   `aiohttp`
     *   `orjson`
+    *   `python-dotenv` (for `.env` file support)
     *   Install dependencies:
         ```bash
-        pip install aiohttp orjson
+        cd python_server
+        pip install -r requirements.txt
         ```
 *   **Running**:
-    Navigate to the `python_server` directory and run:
+    Navigate to the `python_server` directory.
     ```bash
     python server.py
     ```
-    The server will start on `http://localhost:8080`.
+    The server will start, respecting environment variables (e.g., from
+    `python_server/.env` or set in the shell). By default (if `SERVER_HOST` is
+    `localhost`), it listens on `http://localhost:SERVER_PORT`.
 
 #### b. Rust Server
 
 *   **Location**: `rust_server/`
 *   **Main File**: `src/main.rs`
 *   **Requirements**:
-    *   Rust toolchain (latest stable recommended). Install from [rustup.rs](https://rustup.rs/).
+    *   Rust toolchain (latest stable recommended). Install from
+        [rustup.rs](https://rustup.rs/).
 *   **Building & Running**:
     Navigate to the `rust_server` directory.
     1.  **Build**:
@@ -127,92 +176,76 @@ Both servers listen on `localhost:8080` by default (Python) or `0.0.0.0:8080` (R
         ```bash
         cargo run --release
         ```
-        Alternatively, after building, run the executable directly:
+        Alternatively, after building, run the executable directly from the
+        `rust_server` directory:
         ```bash
-        ./target/release/rust_data_server
+        ./target/release/rust_data_server # (or rust_msdp_server if that's the package name)
         ```
-    The server will start on `http://0.0.0.0:8080` (accessible via `http://localhost:8080` or your machine's local IP address).
+    The server will start, respecting environment variables (e.g., from
+    `rust_server/.env` or set in the shell). By default (if `HTTP_HOST` is
+    `0.0.0.0`), it listens on `http://0.0.0.0:HTTP_PORT` (accessible via
+    `http://localhost:HTTP_PORT` or your machine's local IP address).
 
 ### 3. Web Viewer
 
-*   **File**: `python_server/static/subscriber_client.html` (The Rust server also expects this file in a `static` subdirectory relative to its execution path, or it will look for `rust_server/static/subscriber_client.html` if run from the `rust_server` directory).
-*   **Access**: Once a backend server is running, open your web browser and go to:
-    `http://localhost:8080/`
+*   **File Location**:
+    *   For Python server: `python_server/static/subscriber_client.html`
+    *   For Rust server: Expected in `static/subscriber_client.html` relative
+        to where the Rust server is run (or the path specified by
+        `STATIC_DIR_PATH`). By default, this is
+        `rust_server/static/subscriber_client.html` if run from the
+        `rust_server` directory.
+*   **Access**:
+    Once a backend server is running, open your web browser and go to
+    `http://<configured_server_host>:<configured_server_port>/`.
+    For example, if using defaults: `http://localhost:8080/`.
+*   **Configuration**:
+    *   The web viewer connects to `ws://<SERVER_HOST>:<SERVER_PORT>/ws`.
+    *   If you change the server's host or port from the defaults
+        (`localhost:8080`), you **must** update the `SERVER_HOST` and
+        `SERVER_PORT` JavaScript constants at the top of the `<script>`
+        section in `subscriber_client.html`.
 *   **Features**:
-    *   Connects to `ws://localhost:8080/ws`.
-    *   Displays character data in dynamically updating cards.
-    *   Theme toggle (light/dark).
-    *   Character list panel that can be collapsed.
-    *   Individual cards can be expanded to show all raw data received for that character.
-    *   Indicators for connection status, blindness, lack of sanctuary, etc.
-    *   Responsive layout.
+    *   Dynamic character cards, theme toggle, collapsible list, expandable
+        cards, status indicators, responsive layout.
 
 ## Data Flow & Format
 
 ### MUD Client to Server (HTTP POST)
 
-MUD clients send data as a plain text string in the body of an HTTP POST request to the `/update` endpoint. The format is a series of key-value pairs, each enclosed in curly braces:
-
-`{key1}{value1}{key2}{value2}{key3}{value3}...`
-
-**Example:**
-`{CHARACTER_NAME}{MyChar}{HEALTH}{100}{HEALTH_MAX}{120}{MANA}{50}{MANA_MAX}{75}`
-
-*   Keys and values are strings.
-*   Values can be strings, numbers. The server attempts to parse numbers.
-*   The `CHARACTER_NAME` key is crucial for the server to identify and track data for different characters.
+MUD clients send data as plain text to `/update`. Format:
+`{key1}{value1}{key2}{value2}...`
+**Example:** `{CHARACTER_NAME}{MyChar}{HEALTH}{100}{HEALTH_MAX}{120}`
+`CHARACTER_NAME` is crucial.
 
 ### Server to Web Viewer (WebSocket)
 
-The server sends JSON data to connected web viewers via WebSockets (`/ws` endpoint).
+Server sends JSON to `/ws`.
 
-1.  **Initial Snapshot**: Upon connection, the web viewer receives a JSON object where keys are character names and values are objects containing their full data:
+1.  **Initial Snapshot**:
     ```json
     {
-      "MyChar1": { "HEALTH": 100, "MANA": 50, "CLASS": "Warrior", ... },
-      "MyChar2": { "HEALTH": 80, "MANA": 90, "CLASS": "Mage", ... }
+      "MyChar1": { "HEALTH": 100, "CLASS": "Warrior", ... },
+      "MyChar2": { "HEALTH": 80, "CLASS": "Mage", ... }
     }
     ```
 
-2.  **Delta Updates**: Subsequently, the server sends delta updates containing only changed data or deleted characters:
+2.  **Delta Updates**:
     ```json
     {
       "updates": {
-        "MyChar1": { "HEALTH": 95, "MANA": 48, ... } // Only changed fields or full new data
+        "MyChar1": { "HEALTH": 95, ... }
       },
-      "deletions": ["MyChar3"] // List of character names that timed out or were deleted
+      "deletions": ["MyChar3"]
     }
     ```
-    The `updates` object can contain full data for new characters or partial/full data for existing characters.
 
-## Configuration
+    ## General Configuration Notes
 
-### Server Address
+*   **Server Address Consistency**: Ensure the MUD client scripts, the web
+    viewer's JavaScript constants, and the server's actual listening address
+    (configured via environment variables) all match.
+*   **Firewall**: If accessing the server from other machines on your network
+    (when host is `0.0.0.0`), ensure your firewall allows connections to the
+    configured port.
 
-*   MUD client scripts are configured to send data to `http://localhost:8080/update`.
-*   The web viewer connects to `ws://localhost:8080/ws`.
-*   If you change the server's host or port, you'll need to update these in:
-    *   `zmud_client.txt` (HTTP URL)
-    *   `tintin_client.txt` (HTTP URL)
-    *   `python_server/static/subscriber_client.html` (JavaScript constants `SERVER_HOST`, `SERVER_PORT`)
-    *   The server configuration itself (e.g., constants in `server.py` or `main.rs`).
-
-### Client-Side Update Intervals
-
-*   **Tintin**: The `#VAR update_interval {0.5}` in `tintin_client.txt` controls how often data is sent (in seconds).
-*   **ZMud**: Data is sent on prompt updates if changed, and spell affects are decremented by an alarm (defaulting to roughly every 3 seconds).
-
-### Web Viewer (CSS Variables)
-
-The `subscriber_client.html` file uses CSS variables for theming and layout. Some key ones at the top of the `<style>` section can be tweaked:
-
-*   `--max-cards`: Maximum number of character cards to display.
-*   `--blood-max`: Default max blood for vampire classes if not otherwise specified.
-*   `--update-interval-ms`: JavaScript UI update check frequency (not WebSocket rate).
-*   Color variables for light and dark themes.
-
-## Development
-
-*   Ensure the chosen server's dependencies are installed.
-*   The servers will typically auto-reload on code changes if run with development tools (e.g., `cargo watch -x run` for Rust, or some Python auto-reloaders).
-*   Browser developer tools are invaluable for debugging the web viewer and WebSocket communications.
