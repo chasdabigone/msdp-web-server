@@ -174,7 +174,7 @@ async def process_data_string(message_string):
             pending_deletions.discard(char_name)
         app_logger.info(f"{action} character data for: {char_name}. Added to pending updates.")
 
-# --- HTTP Server Logic (Keep as is for /update and /) ---
+# --- HTTP Server Logic (REVISED - handle_root removed) ---
 async def handle_http_update(request):
     raw_data = "<empty>"
     try:
@@ -196,14 +196,7 @@ async def handle_http_update(request):
          http_logger.error(f"Unexpected error handling HTTP request from {request.remote}: {e}", exc_info=True)
          return web.Response(status=500, text="Internal Server Error")
 
-async def handle_root(request):
-    html_file_path = STATIC_DIR / "subscriber_client.html"
-    if not html_file_path.is_file():
-        http_logger.error(f"Static file subscriber_client.html not found at: {html_file_path}")
-        return web.Response(status=404, text="404: Client Page Not Found")
-    http_logger.debug(f"Serving root request with file: {html_file_path}")
-    return web.FileResponse(html_file_path)
-
+# The handle_root function has been removed. Static file serving is handled by app.router.add_static in main.
 
 # --- WebSocket Logic (REVISED for aiohttp and AttributeError fix) ---
 async def send_full_update_aiohttp(ws_response: web.WebSocketResponse):
@@ -482,7 +475,7 @@ async def shutdown(prune_task, broadcast_task, http_runner):
                 app_logger.error(f"Error during task {task_name_short}... shutdown: {res}", exc_info=False)
     app_logger.info("Shutdown complete.")
 
-# --- Main Application Setup and Run (REVISED) ---
+# --- Main Application Setup and Run (REVISED for static file serving) ---
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     prune_task_main = None
@@ -490,7 +483,7 @@ if __name__ == "__main__":
     http_runner_main = None
 
     try:
-        static_html_file = STATIC_DIR / "subscriber_client.html"
+        # Ensure static directory exists
         if not STATIC_DIR.is_dir():
             try:
                 STATIC_DIR.mkdir(parents=True, exist_ok=True)
@@ -498,16 +491,28 @@ if __name__ == "__main__":
             except OSError as e:
                  app_logger.error(f"Static directory not found or creatable: {STATIC_DIR}. Error: {e}. Exiting.")
                  exit(1)
-        if not static_html_file.is_file():
-            app_logger.warning(f"Static file not found: {static_html_file}. Web client at '/' unavailable.")
+        
+        # Check for index.html.
+        # NOTE: Rename your 'static/subscriber_client.html' to 'static/index.html'
+        index_html_path = STATIC_DIR / "index.html"
+        if not index_html_path.is_file():
+            app_logger.warning(
+                f"Main HTML file (index.html) not found in {STATIC_DIR}. "
+                f"The root path '/' might not serve the expected page. "
+                f"Ensure 'subscriber_client.html' has been renamed to 'index.html' in the '{STATIC_DIR.name}' folder."
+            )
 
         prune_task_main = loop.create_task(prune_old_data())
         broadcast_task_main = loop.create_task(broadcast_loop())
 
         app = web.Application(logger=http_logger)
         app.router.add_post('/update', handle_http_update)
-        app.router.add_get('/', handle_root)
         app.router.add_get('/ws', websocket_handler)
+
+        # Serve all files from STATIC_DIR. 'index.html' will be served for '/'.
+        # Other files like 'style.css' and 'script.js' will be served from '/style.css', etc.
+        # Ensure this route is added after more specific routes.
+        app.router.add_static('/', STATIC_DIR, name='static', show_index=True, follow_symlinks=True)
 
         http_runner_main = web.AppRunner(app)
         loop.run_until_complete(http_runner_main.setup())
@@ -515,6 +520,7 @@ if __name__ == "__main__":
         loop.run_until_complete(site.start())
 
         app_logger.info(f"Started HTTP & WebSocket server on http://{HTTP_HOST}:{HTTP_PORT}")
+        app_logger.info(f"Web client available at http://{HTTP_HOST}:{HTTP_PORT}/")
         app_logger.info(f"WebSocket clients connect to ws://{HTTP_HOST}:{HTTP_PORT}/ws")
         app_logger.info("Server running. Press Ctrl+C to stop.")
         loop.run_forever()

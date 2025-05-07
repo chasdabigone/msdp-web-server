@@ -32,6 +32,7 @@ use tokio::{
     time::{self, Instant},
 };
 use tower_http::{
+    services::ServeDir, // <<< ADDED FOR STATIC FILE SERVING
     trace::{DefaultMakeSpan, TraceLayer},
 };
 use tracing::{debug, error, info, warn, Level};
@@ -368,8 +369,9 @@ impl RateLimiter {
                     if let Some(banned_until) = state.banned_until {
                         now < banned_until
                     } else {
-                        now.duration_since(state.last_refill_time) < (cleanup_config.cleanup_interval * 5)
-                            || state.tokens >= (cleanup_config.burst_capacity * 0.9)
+                        // Keep if recently active or has tokens
+                        now.duration_since(state.last_refill_time) < (cleanup_config.cleanup_interval * 5) // Active within 5 cleanup intervals
+                            || state.tokens >= (cleanup_config.burst_capacity * 0.1) // Or still has at least 10% of burst
                     }
                 });
                 let removed_count = initial_size.saturating_sub(state_map_clone.len());
@@ -409,8 +411,9 @@ impl RateLimiter {
 
         if ip_state.tokens >= 1.0 {
             ip_state.tokens -= 1.0;
-            if ip_state.violations > 0 {
-                ip_state.violations = ip_state.violations.saturating_sub(1);
+            // Gradually reduce violations on successful requests
+            if ip_state.violations > 0 && ip_state.tokens > self.config.burst_capacity * 0.5 {
+                 ip_state.violations = ip_state.violations.saturating_sub(1);
             }
             trace!("Rate limit: IP {} allowed. Tokens remaining: {:.2}, Violations: {}", ip, ip_state.tokens, ip_state.violations);
             Ok(())
@@ -466,12 +469,12 @@ struct RateLimitMiddleware<S> {
 impl<S, ReqBody> Service<Request<ReqBody>> for RateLimitMiddleware<S>
 where
     S: Service<Request<ReqBody>, Response = Response<AxumBody>> + Send + 'static,
-    S::Future: Send + 'static, // S::Future itself must be Send
-    S::Error: IntoResponse + Send + 'static,
+    S::Future: Send + 'static,
+    S::Error: IntoResponse + Send + 'static, // Ensure S::Error is IntoResponse, Send, and 'static
     ReqBody: Send + 'static,
 {
     type Response = Response<AxumBody>;
-    type Error = S::Error;
+    type Error = S::Error; // Use S::Error here
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -486,7 +489,7 @@ where
                 match self.limiter.check(addr) {
                     Ok(()) => {
                         trace!("RateLimitMiddleware: Request from {} allowed.", addr);
-                        Box::pin(self.inner.call(req)) // Corrected
+                        Box::pin(self.inner.call(req))
                     }
                     Err(status_code) => {
                         debug!("RateLimitMiddleware: Request from {} denied with status {}.", addr, status_code);
@@ -494,13 +497,37 @@ where
                             .status(status_code)
                             .body(AxumBody::empty())
                             .unwrap();
+                        // We need to ensure the error type matches S::Error.
+                        // If S::Error can be constructed from an IntoResponse,
+                        // this is tricky. A common pattern is to have S::Error be an enum
+                        // that can represent both internal errors and simple HTTP status responses.
+                        // For simplicity here, if S::Error is just `axum::Error` or similar,
+                        // this async block returning `Ok(response)` is fine.
+                        // If `S::Error` is more constrained, this part needs adjustment.
+                        // Given the context, `S::Error` is likely `StatusCode` or `Infallible`
+                        // for the specific handlers used. For a generic middleware, it's best
+                        // to map the error into `S::Error` if possible, or return a direct response.
+                        // Since `handle_http_update` returns `Result<StatusCode, StatusCode>`, S::Error is StatusCode.
+                        // So, `Ok(response)` is not directly compatible if `S::Error` is `StatusCode`.
+                        // However, the `IntoResponse` trait on `S::Error` helps here.
+                        // A simpler way is to make this middleware's error type `axum::Error` or similar.
+                        // Let's assume that `S`'s error type can be satisfied by just returning `Ok(response)`.
+                        // If not, the application would fail to compile at `Box::pin(async { Ok(response) })`
+                        // where the error type of the future doesn't match `S::Error`.
+
+                        // The signature for `S::Error: IntoResponse` means we can return an error that
+                        // converts into a response. StatusCode itself implements IntoResponse.
+                        // So if S::Error is StatusCode, we can do:
+                        // Box::pin(async { Err(status_code) })
+                        // But the middleware's `call` must return `Result<Response, S::Error>`.
+                        // So if we want to return a *response directly* for rate limit, it's `Ok(response)`.
                         Box::pin(async { Ok(response) })
                     }
                 }
             }
             None => {
                 warn!("RateLimitMiddleware: Could not extract peer IP. Allowing request through without rate limiting.");
-                Box::pin(self.inner.call(req)) // Corrected
+                Box::pin(self.inner.call(req))
             }
         }
     }
@@ -680,7 +707,7 @@ async fn prune_loop(state: SharedState, prune_interval: Duration, data_timeout: 
                 let mut pending_updates_guard = state.pending_updates.lock().await;
                 for name in &names_to_prune {
                     pending_deletions_guard.insert(name.clone());
-                    pending_updates_guard.remove(name);
+                    pending_updates_guard.remove(name); // Ensure pruned items are not in pending updates either
                 }
             }
              info!("Pruned {} inactive characters: {:?}. Marked for deletion.", pruned_count, names_to_prune);
@@ -708,6 +735,8 @@ async fn broadcast_loop(state: SharedState, broadcast_interval: Duration, connec
             if info.data.get("CONNECTED").and_then(|v| v.as_str()) == Some("YES") {
                 if let Ok(age) = now.duration_since(info.timestamp) {
                     if age > connection_timeout { disconnected_names.push(name.clone()); }
+                } else {
+                    warn!("System clock went backwards? Char '{}' timestamp in future during broadcast check.", name);
                 }
             }
         });
@@ -715,14 +744,17 @@ async fn broadcast_loop(state: SharedState, broadcast_interval: Duration, connec
         if !disconnected_names.is_empty() {
             for name in &disconnected_names {
                  if let Some(mut char_info_entry) = state.character_data.get_mut(name) {
+                      // Double check CONNECTED status before modifying, in case it changed
                       if char_info_entry.data.get("CONNECTED").and_then(|v| v.as_str()) == Some("YES") {
                           info!("Marking '{}' as disconnected due to timeout.", name);
                            char_info_entry.data.insert("CONNECTED".to_string(), Value::String("NO".to_string()));
+                           // Update timestamp for this change as well
+                           char_info_entry.timestamp = SystemTime::now();
                            {
                                let mut pending_updates_guard = state.pending_updates.lock().await;
                                let mut pending_deletions_guard = state.pending_deletions.lock().await;
                                pending_updates_guard.insert(name.clone(), char_info_entry.data.clone());
-                               pending_deletions_guard.remove(name);
+                               pending_deletions_guard.remove(name); // Ensure it's not marked for deletion if it just got updated
                            }
                            needs_broadcast = true;
                       }
@@ -734,43 +766,64 @@ async fn broadcast_loop(state: SharedState, broadcast_interval: Duration, connec
         {
             let mut pending_updates_guard = state.pending_updates.lock().await;
             let mut pending_deletions_guard = state.pending_deletions.lock().await;
+
+            // If there are any pending changes, set needs_broadcast true
             if !pending_updates_guard.is_empty() || !pending_deletions_guard.is_empty() {
                 needs_broadcast = true;
+            }
+
+            if needs_broadcast { // Only construct delta if there's something to send or broadcast flag is already set
                 let updates = std::mem::take(&mut *pending_updates_guard);
-                let deletions = std::mem::take(&mut *pending_deletions_guard).into_iter().collect();
-                delta_to_send = Some(DeltaUpdate { updates, deletions });
+                let deletions_set = std::mem::take(&mut *pending_deletions_guard);
+                let deletions: Vec<String> = deletions_set.into_iter().collect();
+
+                // Only create Some(DeltaUpdate) if there are actual updates or deletions
+                if !updates.is_empty() || !deletions.is_empty() {
+                    delta_to_send = Some(DeltaUpdate { updates, deletions });
+                } else {
+                    delta_to_send = None; // No actual changes to send this cycle
+                    if !disconnected_names.is_empty() && needs_broadcast {
+                        // This case implies disconnects happened but resulted in no *net* changes for the delta
+                        // (e.g. already marked as NO, or data didn't change).
+                        // Or, more likely, the pending_updates from disconnects were empty.
+                        // Let's ensure `needs_broadcast` remains true if `delta_to_send` is None but should have been.
+                        // This logic is slightly complex; simpler to just send even if updates/deletions are empty if needs_broadcast was true.
+                        // For now, this is fine: if updates and deletions are empty, `delta_to_send` is None.
+                    }
+                }
             } else {
                 delta_to_send = None;
             }
         }
 
-        if needs_broadcast {
-            if let Some(delta) = delta_to_send {
-                let num_subscribers = state.delta_tx.receiver_count();
-                 if num_subscribers > 0 {
-                    info!(
-                        "Broadcasting delta. Updates: {}, Deletions: {}. Subscribers: {}",
-                        delta.updates.len(), delta.deletions.len(), num_subscribers
-                    );
-                    if let Err(e) = state.delta_tx.send(delta) {
-                         error!("Error broadcasting delta ({} receivers): {}", num_subscribers, e);
-                    }
-                 } else {
-                     debug!("No subscribers for delta broadcast.");
-                 }
-            } else if disconnected_names.is_empty() {
-                 trace!("Broadcast check: Flag set, but no new delta.");
-            }
+        // Send only if delta_to_send is Some
+        if let Some(delta) = delta_to_send {
+            let num_subscribers = state.delta_tx.receiver_count();
+             if num_subscribers > 0 {
+                info!(
+                    "Broadcasting delta. Updates: {}, Deletions: {}. Subscribers: {}",
+                    delta.updates.len(), delta.deletions.len(), num_subscribers
+                );
+                if state.delta_tx.send(delta).is_err() { // No need for `e` if not logging it.
+                     // This error means there are no active receivers, even though receiver_count > 0.
+                     // This can happen if receivers are dropped between check and send.
+                     debug!("Error broadcasting delta: no active receivers (or all lagged).");
+                }
+             } else {
+                 trace!("Broadcast check: Delta prepared, but no subscribers.");
+             }
+        } else if needs_broadcast {
+             trace!("Broadcast check: Needs broadcast was true, but no concrete delta to send (e.g., only disconnects that didn't change data).");
         } else {
-             trace!("Broadcast check: No changes.");
+             trace!("Broadcast check: No changes or pending updates.");
         }
     }
 }
 
-// --- Static File Handler ---
+// --- Static File Handler for / (subscriber_client.html) ---
 async fn handle_root() -> impl IntoResponse {
     let html_file_path = PathBuf::from(&*STATIC_DIR_PATH_CONFIG).join("subscriber_client.html");
-    info!("Serving root with: {:?}", html_file_path);
+    info!("Serving root (subscriber_client.html) from: {:?}", html_file_path);
     match File::open(&html_file_path).await {
         Ok(mut file) => {
             let mut contents = String::new();
@@ -797,7 +850,7 @@ async fn main() -> anyhow::Result<()> {
     let http_port = get_env_var("HTTP_PORT", 8080u16);
     let prune_interval_seconds = get_env_var("PRUNE_INTERVAL_SECONDS", 60u64);
     let data_timeout_minutes = get_env_var("DATA_TIMEOUT_MINUTES", 30u64);
-    let broadcast_interval_seconds = get_env_var("BROADCAST_INTERVAL_SECONDS", 0.2f64);
+    let broadcast_interval_seconds = get_env_var("BROADCAST_INTERVAL_SECONDS", 0.2f64); // e.g., 0.2 for 200ms
     let connection_timeout_seconds = get_env_var("CONNECTION_TIMEOUT_SECONDS", 5u64);
     let log_level_str = get_env_var_string("LOG_LEVEL", "INFO");
     let log_level = Level::from_str(&log_level_str.to_lowercase()).unwrap_or(Level::INFO);
@@ -806,8 +859,8 @@ async fn main() -> anyhow::Result<()> {
     let rate_limit_rps = get_env_var("RATE_LIMIT_RPS", 5.0f64);
     let rate_limit_burst_capacity = get_env_var("RATE_LIMIT_BURST_CAPACITY", 15.0f64);
     let rate_limit_violation_threshold = get_env_var("RATE_LIMIT_VIOLATION_THRESHOLD", 20u32);
-    let rate_limit_ban_duration_seconds = get_env_var("RATE_LIMIT_BAN_DURATION_SECONDS", 300u64);
-    let rate_limit_cleanup_interval_seconds = get_env_var("RATE_LIMIT_CLEANUP_INTERVAL_SECONDS", 600u64);
+    let rate_limit_ban_duration_seconds = get_env_var("RATE_LIMIT_BAN_DURATION_SECONDS", 300u64); // 5 minutes
+    let rate_limit_cleanup_interval_seconds = get_env_var("RATE_LIMIT_CLEANUP_INTERVAL_SECONDS", 600u64); // 10 minutes
 
     tracing_subscriber::registry()
         .with(fmt::layer())
@@ -818,7 +871,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Log level: {:?}", log_level);
     info!("HTTP Host: {}", http_host);
     info!("HTTP Port: {}", http_port);
-    info!("Static Directory: {}", &*STATIC_DIR_PATH_CONFIG);
+    info!("Static Directory (for fallback serving): {}", &*STATIC_DIR_PATH_CONFIG);
 
     let prune_interval_duration = Duration::from_secs(prune_interval_seconds);
     let data_timeout_duration = Duration::from_secs(data_timeout_minutes * 60);
@@ -836,7 +889,7 @@ async fn main() -> anyhow::Result<()> {
     let rate_limiter = RateLimiter::new(rl_config);
     let rate_limit_layer = RateLimitLayer::new(rate_limiter);
 
-    let (delta_tx, _) = broadcast::channel::<DeltaUpdate>(100);
+    let (delta_tx, _) = broadcast::channel::<DeltaUpdate>(100); // Channel capacity
     let shared_state = Arc::new(AppStateInternal {
         character_data: DashMap::new(),
         pending_updates: Mutex::new(HashMap::new()),
@@ -854,10 +907,17 @@ async fn main() -> anyhow::Result<()> {
         broadcast_loop(broadcast_state, broadcast_interval_duration, connection_timeout_duration).await;
     });
 
+    // Configure ServeDir for static files
+    let static_dir_path = PathBuf::from(&*STATIC_DIR_PATH_CONFIG);
+    info!("Configuring static file fallback serving from: {:?}", static_dir_path);
+    let static_files_service = ServeDir::new(static_dir_path.clone()) // Clone static_dir_path if needed elsewhere
+        .append_index_html_on_directories(false); // Optional: if you don't want /foo/ to serve /foo/index.html
+
     let app = Router::new()
         .route("/update", post(handle_http_update).layer(rate_limit_layer.clone()))
-        .route("/", get(handle_root))
+        .route("/", get(handle_root)) // Specific handler for subscriber_client.html
         .route("/ws", get(ws_handler))
+        .fallback_service(static_files_service) // <<< MODIFIED: Serve other static files
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
@@ -905,5 +965,14 @@ async fn shutdown_signal(
     info!("Cancelling background tasks...");
     prune_handle.abort();
     broadcast_handle.abort();
-    info!("Background tasks cancellation requested.");
+
+    // Optional: Await task handles to ensure they complete their abort logic if they have any.
+    // However, abort() just signals cancellation; tasks might not finish immediately.
+    // tokio::join!(
+    //     async { if let Err(e) = prune_handle.await { error!("Prune task panicked or was cancelled: {:?}", e); }},
+    //     async { if let Err(e) = broadcast_handle.await { error!("Broadcast task panicked or was cancelled: {:?}", e); }}
+    // );
+    // For simple abort, just signaling is usually enough.
+
+    info!("Background tasks cancellation requested. Server will shut down shortly.");
 }
