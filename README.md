@@ -12,7 +12,7 @@ The core data transmission format from the MUD client to the server is a simple 
 
 Two backend server implementations are provided:
 1.  **Python Server**: Built with `aiohttp` for asynchronous handling. Recommended for personal or light use.
-2.  **Rust Server**: Built with `axum` for performance and type safety. Recommended when performance matters (many users).
+2.  **Rust Server**: Built with `axum` for performance and type safety. Recommended when performance matters (many users). Includes rate limiting.
 
 You only need to run **one** of these server implementations. Both servers are configurable via environment variables.
 
@@ -141,7 +141,10 @@ different host or port, you **must** update the URL in the client script.
     *   Default update interval is `0.5` seconds (configurable via
         `#VAR update_interval`).
 
-#### a. MUSH Client
+#### c. MUSH Client
+    * Not yet implemented. Similar to TinTin++
+
+#### d. CMud Client
     * Not yet implemented. Similar to TinTin++
 
 ### 2. Backend Servers (Choose ONE)
@@ -216,7 +219,7 @@ different host or port, you **must** update the URL in the client script.
         `SERVER_PORT` JavaScript constants at the top of the `<script>`
         section in `subscriber_client.html`.
 *   **Features**:
-    *   Dynamic character cards, theme toggle, collapsible list, expandable
+    *   Dynamic character cards, dark mode toggle, collapsible list, expandable
         cards, status indicators, responsive layout.
 
 ## Data Flow & Format
