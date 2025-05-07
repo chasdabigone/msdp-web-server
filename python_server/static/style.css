@@ -1,0 +1,898 @@
+/* --- Configuration (Mirrors Python where applicable) --- */
+:root {
+  --max-cards: 16;
+  --blood-max: 60;
+  --max-opponent-name-length: 20;
+  --update-interval-ms: 150; /* How often JS checks for updates (not WS rate) */
+  --reconnect-delay-ms: 5000;
+
+  /* --- Light Theme Colors (Default) --- */
+  --bg-color: #f0f0f0;
+  --panel-bg: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%);
+  --card-bg: #ffffff;
+  --border-color: #d8d8d8;
+  --text-color: #333333;
+  --secondary-text-color: #555555;
+  --title-color: #003366;
+  --hp-bar-color: #dc3545; /* red */
+  --mana-bar-color: #007bff; /* blue */
+  --blood-bar-color: #8b0000; /* darkred */
+  --bar-bg-color: #e9ecef; /* light grey */
+  --indicator-color: #dc3545; /* red */
+  --button-bg: #e0e0e0;
+  --button-hover-bg: #d0d0d0;
+  --list-hover-bg: #e8f0fe;
+  --list-selected-bg: #cce0ff;
+  --list-selected-border-color: var(--title-color);
+  --code-bg: #f8f8f8;
+  --code-border-color: #eee;
+  --list-separator-color: #eee;
+  --separator-color: #eeeeee;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --card-hover-shadow: 0 4px 8px rgba(0,0,0,0.18);
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #ccc;
+  --scrollbar-thumb-hover: #aaa;
+
+  /* --- Status Colors (Used by both themes) --- */
+  --status-connected-color: #28a745; /* green */
+  --status-disconnected-color: #dc3545; /* red */
+  --status-connecting-color: #ffc107; /* yellow */
+  --status-lag-warn-color: #ff8c00; /* orange */
+}
+
+/* --- Dark Theme Colors --- */
+.dark-mode {
+  --bg-color: #1a1a1a;
+  --panel-bg: linear-gradient(180deg, #2d2d2d 0%, #252525 100%);
+  --card-bg: #2b2b2b;
+  --border-color: #454545;
+  --text-color: #e0e0e0;
+  --secondary-text-color: #bbbbbb;
+  --title-color: #7aa0cc; /* Lighter blue for dark bg */
+  --hp-bar-color: #e54857; /* Slightly brighter red */
+  --mana-bar-color: #3391ff; /* Slightly brighter blue */
+  --blood-bar-color: #a52a2a; /* Slightly brighter dark red */
+  --bar-bg-color: #404040;
+  --indicator-color: #e54857; /* Match HP bar */
+  --button-bg: #444444;
+  --button-hover-bg: #555555;
+  --list-hover-bg: #3a3a3a;
+  --list-selected-bg: #4a5a70;
+  --list-selected-border-color: var(--title-color);
+  --code-bg: #333333;
+  --code-border-color: #444;
+  --list-separator-color: #444;
+  --separator-color: #444444;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --card-hover-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  --scrollbar-track: #2c2c2c;
+  --scrollbar-thumb: #555;
+  --scrollbar-thumb-hover: #777;
+}
+
+/* --- Basic Reset & Body --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 14px;
+  overflow: hidden; /* Prevent body scrollbars, manage scrolling in panels */
+  transition: background-color 0.3s ease, color 0.3s ease; /* Theme transition */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Standard scrollbar colors */
+  position: relative; /* Needed for absolute positioning of theme toggle */
+}
+
+/* --- Theme Toggle Button (Top Right) --- */
+#theme-toggle {
+  position: absolute; /* Position relative to body */
+  top: 10px;
+  right: 15px;
+  z-index: 100; /* Ensure it's above other content */
+  cursor: pointer;
+  user-select: none;
+  font-size: 1.4em; /* Adjust size as needed */
+  padding: 2px 5px;
+  border-radius: 5px;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  transition: background-color 0.1s ease, color 0.3s ease, border-color 0.3s ease;
+  line-height: 1; /* Helps vertical alignment */
+}
+#theme-toggle:hover {
+  background-color: var(--button-hover-bg);
+}
+
+
+/* --- Main Layout --- */
+.container {
+  display: flex;
+  height: 100vh; /* Full viewport height */
+  padding: 10px; /* Default padding */
+  gap: 10px;
+}
+
+/* Styling for the list panel itself */
+.list-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  flex: 0 0 200px; /* Fixed width, don't grow or shrink */
+  display: flex; /* Keep flex for internal layout */
+  flex-direction: column;
+  overflow: hidden; /* Start with hidden overflow */
+  transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, max-height 0.3s ease-in-out, background 0.3s ease, border-color 0.3s ease; /* Added max-height */
+  min-width: 200px; /* Explicit min-width for transition */
+  max-height: calc(100vh - 20px); /* Adjust max-height based on container padding */
+}
+
+#list-panel-header {
+  cursor: pointer;
+  user-select: none; /* Prevent text selection on click */
+  position: relative; /* Needed if you wanted absolute positioning inside */
+  font-size: 1.1em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--title-color);
+  white-space: nowrap;
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Vertically align items */
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+#connection-status-indicator {
+  display: inline-block;
+  width: 10px; /* Size of the circle */
+  height: 10px;
+  border-radius: 50%; /* Make it a circle */
+  margin-right: 8px; /* Space between circle and toggle */
+  flex-shrink: 0; /* Prevent shrinking */
+  background-color: var(--status-connecting-color); /* Default color */
+  transition: background-color 0.3s ease; /* Smooth color change */
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+.dark-mode #connection-status-indicator {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+#connection-status-indicator.connected { background-color: var(--status-connected-color); }
+#connection-status-indicator.disconnected { background-color: var(--status-disconnected-color); }
+#connection-status-indicator.connecting { background-color: var(--status-connecting-color); }
+
+
+#collapse-toggle {
+  display: inline-block; /* Allow sizing and margins */
+  width: 18px;          /* Give it some space */
+  height: 18px;
+  line-height: 16px;    /* Vertically center arrow */
+  text-align: center;
+  margin-right: 4px;    /* Space between arrow and "Characters" */
+  font-size: 0.8em;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  transition: background-color 0.1s ease, color 0.3s ease, border-color 0.3s ease;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+#list-panel-header:hover #collapse-toggle {
+  background-color: var(--button-hover-bg);
+}
+.list-panel-title-text {
+   margin-left: 4px;
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+}
+
+
+#character-list {
+  list-style: none;
+  overflow-y: auto; /* Enable vertical scrolling */
+  flex-grow: 1; /* Take remaining space in the panel */
+  padding: 5px 0;
+  /* Add scrollbar styles */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+#character-list::-webkit-scrollbar { width: 8px; }
+#character-list::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+#character-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+#character-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+
+#character-list li {
+  padding: 6px 9px 6px 12px; /* Adjusted left padding slightly for border */
+  cursor: pointer;
+  border-bottom: 1px solid var(--list-separator-color);
+  user-select: none; /* Prevent text selection on click */
+  font-size: 0.9em;
+  transition: background-color 0.1s ease-in-out, border-left-color 0.1s ease-in-out, border-bottom-color 0.3s ease, color 0.3s ease; /* Added color transition */
+  display: flex;
+  justify-content: space-between; /* Push name left, icon right */
+  align-items: center; /* Vertically align */
+  gap: 5px; /* Space between name and icon */
+  border-left: 3px solid transparent; /* Reserve space for selected border */
+  color: var(--text-color); /* Ensure list item text color changes */
+}
+#character-list li .list-char-name {
+   white-space: nowrap; /* Prevent list item text wrapping */
+   overflow: hidden;
+   text-overflow: ellipsis;
+   flex-grow: 1; /* Allow name to take available space */
+}
+#character-list li .list-char-indicator {
+  display: inline-block;
+  width: 8px; /* Slightly smaller than main indicator */
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0; /* Don't shrink */
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background-color: var(--status-disconnected-color); /* Default to disconnected */
+  transition: background-color 0.3s ease;
+}
+.dark-mode #character-list li .list-char-indicator {
+   border: 1px solid rgba(255, 255, 255, 0.15);
+}
+#character-list li .list-char-indicator.connected {
+  background-color: var(--status-connected-color);
+}
+#character-list li .list-char-indicator.disconnected {
+  background-color: var(--status-disconnected-color);
+}
+
+
+#character-list li:last-child {
+  border-bottom: none;
+}
+
+#character-list li:hover {
+  background-color: var(--list-hover-bg);
+}
+
+#character-list li.selected {
+  background-color: var(--list-selected-bg);
+  font-weight: bold; /* Keep selected bold */
+  border-left: 3px solid var(--list-selected-border-color);
+  padding-left: 9px; /* Reduce left padding to account for border width */
+}
+
+.list-panel.collapsed {
+  flex-basis: 40px; /* Width when collapsed */
+  min-width: 40px;  /* Allow shrinking */
+  max-height: 40px; /* Explicit max-height when collapsed */
+}
+
+.list-panel.collapsed #character-list {
+  display: none;
+}
+.list-panel.collapsed #list-panel-header {
+   border-bottom: none;
+}
+
+.card-panel {
+  flex-grow: 1; /* Take remaining horizontal space */
+  background-color: transparent; /* Use body background */
+  overflow-y: auto; /* Allow scrolling if cards overflow */
+  padding: 5px; /* Padding around the grid */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Responsive columns */
+  gap: 10px; /* Space between cards */
+  align-content: start; /* Align cards to the top */
+  max-height: calc(100vh - 20px); /* Adjust max-height based on container padding */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+/* WebKit Scrollbar for Card Panel */
+.card-panel::-webkit-scrollbar { width: 8px; }
+.card-panel::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+.card-panel::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+.card-panel::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+
+/* --- Character Card Styling --- */
+.character-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 12px; /* Slightly increased padding */
+  position: relative;
+  box-shadow: var(--card-shadow);
+  overflow: hidden; /* Clip content */
+  display: flex; /* Use flex for internal layout */
+  flex-direction: column;
+  transition: box-shadow 0.2s ease, opacity 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+  min-height: 280px; /* Ensure consistent height baseline */
+}
+.character-card.hidden {
+  display: none; /* Hide unused card slots */
+}
+
+.character-card:hover {
+   box-shadow: var(--card-hover-shadow);
+}
+
+.character-card.card-offline {
+  opacity: 0.65;
+}
+
+.card-content {
+  flex-grow: 1; /* Allows content to fill space */
+  overflow-y: auto; /* Allow card content to scroll if needed */
+  padding-right: 5px; /* Space for scrollbar if needed */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Standard scrollbar colors */
+}
+
+/* Scrollbar styling (WebKit specific) */
+.card-content::-webkit-scrollbar {
+  width: 6px;
+}
+.card-content::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 3px;
+}
+.card-content::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+.card-content::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+
+.card-header {
+  margin-bottom: 8px;
+}
+
+/* --- MODIFIED: Lag Bar Positioning Rules --- */
+.char-name {
+  font-size: 1.15em;
+  font-weight: bold;
+  color: var(--title-color);
+  margin-bottom: 2px;
+  position: relative; /* Needed for absolute positioning of lag bar */
+  display: block;
+  transition: color 0.3s ease;
+  min-height: 20px; /* Add min-height to ensure space */
+}
+
+.char-name-text {
+  word-break: break-all;
+  padding-right: 5px; /* Give text some padding */
+}
+
+.char-lag {
+  /* Position absolutely within .char-name */
+  position: absolute;
+  top: 7px;  /* Moved lower */
+  right: 30px; /* Moved left */
+  z-index: 2; /* Ensure it's above text */
+
+  /* Keep original size and background */
+  display: inline-block;
+  width: 50px;
+  height: 10px;
+  background-color: var(--bar-bg-color);
+  border-radius: 2px;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+/* Style for Lag Indicator Foreground (Unchanged) */
+.lag-bar-fg {
+  display: block;
+  height: 100%;
+  width: 0%; /* Set by JS */
+  background-color: var(--status-connected-color); /* Default/initial color */
+  border-radius: 2px; /* Match parent rounding */
+  transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+/* Lag Color Classes (target the foreground - Unchanged) */
+.char-lag.lag-ok .lag-bar-fg { background-color: var(--status-connected-color); } /* Green */
+.char-lag.lag-high .lag-bar-fg { background-color: var(--status-lag-warn-color); } /* Orange */
+.char-lag.lag-critical .lag-bar-fg {
+  background-color: var(--status-disconnected-color); /* Red */
+  animation: blink 1s infinite; /* Blinking animation */
+}
+
+/* Blinking Keyframes (Unchanged) */
+@keyframes blink {
+  50% {
+      opacity: 0.3;
+  }
+}
+/* --- END MODIFIED Lag Bar Rules --- */
+
+
+.char-class {
+  font-size: 0.9em;
+  font-style: italic;
+  color: var(--secondary-text-color);
+  margin-bottom: 5px; /* Add space before first bar */
+  transition: color 0.3s ease;
+}
+
+/* Stat Bars - Revised Layout */
+.stat-bar {
+  margin-bottom: 10px; /* Increased spacing between bars */
+}
+
+.bar-container { /* Styles for the bar's background/outline */
+  width: 100%; /* Take full width */
+  height: 12px; /* Bar height */
+  background-color: var(--bar-bg-color);
+  border-radius: 3px;
+  overflow: hidden; /* Keep fg bar clipped */
+  border: 1px solid var(--border-color); /* Outline */
+  margin-bottom: 3px; /* Space between bar and text */
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.bar-fg { /* Styles for the filled part */
+  height: 100%;
+  width: 0%; /* Set by JS */
+  border-radius: 2px 0 0 2px; /* Keep left radius inside */
+  transition: width 0.3s ease-in-out, background-color 0.3s ease; /* Added background-color transition */
+}
+/* Assign colors based on parent bar class */
+.hp-bar .bar-fg { background-color: var(--hp-bar-color); }
+.mana-bar .bar-fg { background-color: var(--mana-bar-color); }
+.blood-bar .bar-fg { background-color: var(--blood-bar-color); }
+
+.stat-text-line { /* Container for Label + Text */
+  display: flex; /* Use flexbox to position label and text */
+  justify-content: space-between; /* Pushes label left, text right */
+  align-items: center; /* Vertically align if needed */
+  width: 100%;
+  font-size: 0.85em; /* Apply font size here */
+  padding: 0 1px; /* Optional small horizontal padding */
+  color: var(--text-color); /* Ensure text color updates */
+  transition: color 0.3s ease;
+}
+
+.bar-label {
+  font-weight: normal; /* Make label normal weight */
+  margin-right: 5px; /* Space after label */
+  white-space: nowrap; /* Prevent label wrapping */
+  flex-shrink: 0; /* Prevent label from shrinking */
+}
+
+.bar-text {
+  font-weight: bold; /* Keep value bold */
+  text-align: right; /* Keep text aligned right */
+  flex-grow: 1; /* Allow text area to take remaining space */
+}
+
+/* === General Info Line Styling === */
+.info-line {
+  font-size: 0.8em;
+  margin-bottom: 8px; /* Space below line */
+  margin-top: 8px; /* Space above line */
+  padding-top: 8px; /* Space between dashed border and text */
+  border-top: 1px dashed var(--separator-color); /* Use variable */
+  display: none; /* Hidden by default, shown by JS if they have content */
+  clear: both; /* Ensure it clears floats (like bar text) */
+  line-height: 1.4; /* Improve readability if text wraps */
+  color: var(--text-color); /* Ensure text color updates */
+  transition: color 0.3s ease, border-top-color 0.3s ease;
+}
+
+/* Labels within info lines (e.g., "Opponent HP:") */
+.info-line-label {
+  font-weight: normal; /* Make label normal weight */
+  display: inline-block; /* Allows margin-right */
+  margin-right: 4px;
+}
+
+/* Values within info lines */
+.info-line-value {
+  font-weight: bold; /* Keep value bold */
+}
+
+/* === Styling for the combined favor/style/etc line === */
+.favor-style-line {
+  display: none; /* Hidden by default, JS sets to 'flex' */
+  justify-content: flex-start; /* Align children to start */
+  align-items: baseline; /* Align text baselines */
+  gap: 10px; /* Add space between items */
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+.favor-style-line .favor-part,
+.favor-style-line .style-part,
+.favor-style-line .fly-part,
+.favor-style-line .vis-part,
+.favor-style-line .alignment-part, /* Added alignment-part */
+.favor-style-line .eq-hits-part {
+  font-weight: bold; /* Keep these values bold */
+  white-space: nowrap; /* Prevent wrapping within a part */
+  display: none; /* Hide parts individually by default */
+}
+
+/* Styling for the FLY checkbox */
+.favor-style-line .fly-part input[type="checkbox"] {
+  vertical-align: middle; /* Align checkbox with text */
+  margin: 0 0 0 2px; /* Small space after "FLY:" */
+  pointer-events: none; /* Crucial: Makes it non-interactive */
+  cursor: default;      /* Reinforces non-interactive look */
+  accent-color: var(--mana-bar-color); /* Sets the color *when checked* to mana blue */
+  width: 12px; /* Adjust size */
+  height: 12px;
+  transition: opacity 0.2s ease; /* Optional: smooth visual transition */
+}
+
+/* Dim the checkbox ONLY when it's NOT checked */
+.favor-style-line .fly-part input[type="checkbox"]:not(:checked) {
+  opacity: 0.6; /* Apply dimming only when unchecked */
+}
+
+/* Optional: Keep dark mode adjustments if needed */
+.dark-mode .favor-style-line .fly-part input[type="checkbox"] {
+   filter: brightness(1.2); /* Make checkbox slightly brighter overall in dark mode */
+}
+
+/* === MODIFIED Opponent Line Styling === */
+.opponent-line {
+  display: none; /* Keep hidden by default */
+  /* Properties when shown by JS: */
+  /* display: flex; */
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.opponent-line .info-line-label {
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  font-weight: bold; /* ADDED: Make opponent name bold */
+}
+.opponent-line .info-line-value {
+  float: none;
+  flex-shrink: 0;
+  text-align: right;
+  padding-left: 5px;
+}
+
+/* === END Info Line Styling === */
+
+
+/* Affects Section */
+.affects-section {
+  margin-top: 8px;
+  font-size: 0.8em;
+  padding-top: 8px;
+  border-top: 1px dashed var(--separator-color); /* Use variable */
+  display: none;
+  clear: both;
+  color: var(--text-color); /* Ensure text color updates */
+  transition: color 0.3s ease, border-top-color 0.3s ease;
+}
+.affects-section h4 {
+  font-size: 1em;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.affects-text {
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 100px;
+  overflow-y: auto;
+  background-color: var(--code-bg);
+  padding: 4px;
+  border: 1px solid var(--code-border-color);
+  border-radius: 3px;
+  font-size: 0.95em;
+  color: var(--text-color); /* Ensure code text color updates */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+/* WebKit scrollbar styles for code blocks */
+.affects-text::-webkit-scrollbar { width: 6px; }
+.affects-text::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
+.affects-text::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+.affects-text::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+
+/* Expanded Section */
+.expanded-section {
+  margin-top: 10px;
+  font-size: 0.8em;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color); /* Use main border color */
+  display: none;
+  clear: both;
+  color: var(--text-color); /* Ensure text color updates */
+  transition: color 0.3s ease, border-top-color 0.3s ease;
+}
+.expanded-section h4 {
+  font-size: 1em;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+.expanded-text {
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 250px;
+  overflow-y: auto;
+  background-color: var(--code-bg);
+  padding: 6px;
+  border: 1px solid var(--code-border-color);
+  border-radius: 3px;
+  color: var(--text-color); /* Ensure code text color updates */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+/* WebKit scrollbar styles for code blocks */
+.expanded-text::-webkit-scrollbar { width: 6px; }
+.expanded-text::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
+.expanded-text::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+.expanded-text::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+
+/* Indicators and Button */
+.card-connection-indicator {
+  position: absolute;
+  top: 6px;
+  right: 28px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--status-disconnected-color);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  transition: background-color 0.3s ease;
+}
+.dark-mode .card-connection-indicator {
+   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.card-connection-indicator.connected {
+  background-color: var(--status-connected-color);
+}
+.card-connection-indicator.disconnected {
+  background-color: var(--status-disconnected-color);
+}
+
+.expand-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  border-radius: 3px;
+  padding: 0;
+  z-index: 10;
+  transition: background-color 0.1s ease, color 0.3s ease, border-color 0.3s ease;
+}
+.expand-button:hover {
+  background-color: var(--button-hover-bg);
+}
+.expand-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.indicator {
+  position: absolute;
+  right: 8px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: var(--indicator-color);
+  background-color: rgba(255, 255, 255, 0.7); /* Keep light bg for visibility */
+  padding: 0 3px;
+  border-radius: 2px;
+  display: none;
+  z-index: 5;
+}
+.dark-mode .indicator {
+   background-color: rgba(0, 0, 0, 0.6); /* Darker bg for dark mode */
+   color: #ff6b81; /* Brighter red maybe */
+}
+.blindness-indicator { top: 28px; }
+.no-sanc-indicator { top: 46px; }
+
+
+/* --- Responsiveness --- */
+
+/* START - Added Rule for Desktop Container Padding */
+@media (min-width: 769px) {
+  .container {
+      /* Add padding on the right to make space for the absolute theme toggle */
+      padding-right: 45px; /* Adjust this value as needed */
+  }
+
+  /* Adjust list panel collapsed view */
+  .list-panel.collapsed #list-panel-header {
+      flex-direction: column;  /* Stack items vertically */
+      align-items: center;     /* Center items horizontally */
+      justify-content: flex-start; /* Align items to the top */
+      padding: 5px 0;          /* Adjust padding for vertical layout */
+      overflow: hidden;        /* Ensure nothing spills out */
+      height: 100%;            /* Fill the 40px height */
+      border-bottom: none;     /* Remove border for cleaner look */
+  }
+
+  .list-panel.collapsed #connection-status-indicator {
+      margin-right: 0;        /* Remove side margin */
+      margin-bottom: 4px;     /* Add space below indicator */
+  }
+
+  .list-panel.collapsed #collapse-toggle {
+      margin-right: 0;        /* Remove side margin */
+      margin-top: 0;          /* Reset top margin if any */
+      margin-bottom: 0;       /* No bottom margin needed */
+  }
+
+  .list-panel.collapsed .list-panel-title-text {
+      display: none;
+  }
+}
+/* END - Added Rule for Desktop Container Padding */
+
+
+@media (max-width: 768px) {
+  #theme-toggle {
+      top: 8px;
+      right: 10px;
+      font-size: 1.2em;
+      /* No overlap issue here due to layout change */
+  }
+  .container {
+      flex-direction: column;
+      padding: 5px; /* Mobile padding */
+      /* No need for extra right padding here */
+  }
+
+  .list-panel {
+      max-height: 35vh; /* This limits its height relative to viewport */
+      flex: 0 0 auto;
+      min-width: unset;
+      width: 100%;
+      margin-bottom: 10px;
+      transition: max-height 0.3s ease-in-out, background 0.3s ease, border-color 0.3s ease; /* Add theme transitions */
+      display: flex;
+      flex-direction: column;
+       border: 1px solid var(--border-color);
+  }
+
+  .list-panel.collapsed {
+      flex-basis: auto;
+      min-width: unset;
+      max-height: 40px; /* Keep explicit collapsed height */
+      overflow: hidden;
+  }
+
+   .list-panel.collapsed #character-list {
+       display: none;
+   }
+
+   /* Keep header horizontal on mobile, even when collapsed */
+   .list-panel #list-panel-header {
+      flex-direction: row;
+      justify-content: flex-start;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-color);
+       height: auto;
+   }
+   .list-panel.collapsed #list-panel-header {
+        border-bottom: none; /* Remove border when collapsed */
+   }
+
+    .list-panel #connection-status-indicator {
+        margin-right: 8px;
+        margin-bottom: 0; /* Ensure vertical alignment */
+    }
+     .list-panel #collapse-toggle {
+        margin-right: 4px;
+        margin-top: 0;
+        margin-bottom: 0; /* Override desktop collapse margin */
+     }
+
+   .list-panel .list-panel-title-text {
+      display: inline; /* Ensure title text shows */
+      margin-left: 4px;
+   }
+
+  #character-list {
+      overflow-y: auto;
+      flex-grow: 1;
+  }
+
+  .card-panel {
+       flex-grow: 1;
+       min-height: 0; /* Allow shrinking */
+       overflow-y: auto;
+       padding: 0; /* Remove padding around grid on mobile */
+       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+       width: 100%;
+       align-content: start;
+       scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+       max-height: calc(100vh - 10px - 35vh - 10px); /* container padding - list height - gap */
+       /* Ensure scrollbar styles apply here too */
+  }
+
+   .stat-text-line {
+       font-size: 0.8em;
+   }
+
+   /* --- MODIFIED: Lag Bar Responsive --- */
+   .char-name {
+       min-height: 18px; /* Adjust min-height */
+   }
+   .char-name-text {
+       padding-right: 5px; /* Keep padding */
+   }
+   .char-lag {
+       width: 45px;
+       height: 9px;
+       top: 6px; /* Adjust slightly for smaller height */
+       right: 28px; /* Adjust slightly */
+   }
+   /* --- END Lag Bar Responsive --- */
+
+   .info-line {
+       font-size: 0.75em;
+   }
+   /* Adjust favor/style line spacing for mobile */
+   .favor-style-line {
+       gap: 6px;
+   }
+}
+@media (max-width: 480px) {
+   #theme-toggle {
+       top: 6px;
+       right: 8px;
+       font-size: 1.1em;
+   }
+   .list-panel {
+       max-height: 30vh; /* Reduce list height slightly */
+   }
+   .card-panel {
+       grid-template-columns: 1fr; /* Single column */
+       max-height: calc(100vh - 10px - 30vh - 10px); /* Adjust max-height */
+   }
+   body { font-size: 13px; }
+
+   /* --- MODIFIED: Lag Bar Responsive (Small) --- */
+   .char-name {
+       font-size: 1.1em;
+       min-height: 16px; /* Adjust min-height */
+   }
+   .char-name-text {
+       padding-right: 5px; /* Keep padding */
+   }
+   .char-lag {
+       width: 40px;
+       height: 8px;
+       top: 5px; /* Adjust slightly for smaller height */
+       right: 25px; /* Adjust slightly */
+   }
+   /* --- END Lag Bar Responsive (Small) --- */
+
+   .info-line {
+       font-size: 0.75em;
+   }
+   #list-panel-header {
+       padding: 6px 8px; /* Slightly reduce padding */
+   }
+    #connection-status-indicator { margin-right: 5px; }
+    #collapse-toggle { margin-right: 3px; }
+    .list-panel-title-text { font-size: 1em; }
+}

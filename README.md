@@ -25,7 +25,7 @@ You only need to run **one** of these server implementations. Both servers are c
     *   Rust server for high performance and robustness.
 *   **Configurable Servers**: Key server parameters (host, port, timeouts, logging) can be set using environment variables or a `.env` file.
 *   **Real-time Web Viewer**:
-    *   Displays character cards with stats (HP, Mana/Blood), class, lag, opponent info, affects, and more.
+    *   Displays character cards with stats (HP, Mana/Blood), class, skill and spell delay (wait time), opponent info, spells, and more.
     *   Supports multiple character cards (configurable up to 16 by default).
     *   Dynamic updates via WebSockets.
     *   Collapsible character list panel.
@@ -59,7 +59,7 @@ You only need to run **one** of these server implementations. Both servers are c
         as JSON over a WebSocket connection from its `/ws` endpoint.
     *   Serves the web viewer HTML page from its root (`/`) endpoint.
 4.  **Web Viewer**:
-    *   A static HTML page (`subscriber_client.html`) with JavaScript.
+    *   A static HTML page (`subscriber_client.html`) with JavaScript and CSS.
     *   Connects to the server's WebSocket endpoint.
     *   Receives JSON data and dynamically renders character cards.
 
@@ -118,7 +118,7 @@ different host or port, you **must** update the URL in the client script.
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
         URL in the `#ALIAS sendData` line.
     6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{Thoric} or {CHARACTER_NAME}{@character} where you define the variable.
-    7.  Populate variables like `@curHP` `@curMana` etc. from your prompt. You need to build a string like `{OPPONENT_HEALTH}{A dragon}` for the `@opponentHP` or `@opponentName` variables.
+    7.  Populate variables like `@curHP` `@curMana` etc. from your prompt AND fprompt. You need to build a string like `{OPPONENT_HEALTH}{A dragon}` for the `@opponentHP` or `@opponentName` variables.
 *   **Functionality**:
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
     *   Automatically sends data on prompt updates if data has changed.
@@ -217,10 +217,13 @@ different host or port, you **must** update the URL in the client script.
     *   If you change the server's host or port from the defaults
         (`localhost:8080`), you **must** update the `SERVER_HOST` and
         `SERVER_PORT` JavaScript constants at the top of the `<script>`
-        section in `subscriber_client.html`.
+        section in `script.js`.
 *   **Features**:
     *   Dynamic character cards, dark mode toggle, collapsible list, expandable
         cards, status indicators, responsive layout.
+*   **MUD Compatibility**:
+    *   This web client was developed for compatibility with [Realms of Despair](https://realmsofdespair.com)
+    *   If your MUD provides different MSDP keys, or to add your own, you will need to modify this file.
 
 ## Data Flow & Format
 
@@ -229,7 +232,7 @@ different host or port, you **must** update the URL in the client script.
 MUD clients send data as plain text to `/update`. Format:
 `{key1}{value1}{key2}{value2}...`
 **Example:** `{CHARACTER_NAME}{MyChar}{HEALTH}{100}{HEALTH_MAX}{120}`
-`CHARACTER_NAME` is crucial.
+`CHARACTER_NAME` is required for the string to be accepted.
 
 ### Server to Web Viewer (WebSocket)
 
