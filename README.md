@@ -141,12 +141,15 @@ different host or port, you **must** update the URL in the client script.
     *   Ensure your Tintin++ setup populates `$msdp_info`.
     *   Default update interval is `1` seconds (configurable via
         `#VAR update_interval`).
+    * Optional: Trigger off of MSDP closing handshake `#EVENT {IAC SB MSDP IAC SE}`
 
 #### c. MUSH Client
-    * Install the `HttpDataSender.xml' plugin located in the folder `MUSHClient`
-    * Configure the URL
-    * Use `send_http_data {CHARACTER_NAME}{MyName}{HEALTH}{100}` etc
-    * Make a trigger that uses your MSDP handshake or your prompt to send  `World.Execute "send_http_data " & data_to_send`
+*   **File**: `MUSHClient/HttpDataSender.xml`
+*   **Setup**:
+    * Install the `HttpDataSender.xml' plugin
+    * Configure the URL with `send_http_config url`
+    * Use ex. `send_http_data {CHARACTER_NAME}{MyName}{HEALTH}{100}`
+    * Make a trigger that uses your MSDP handshake or your prompt to send  `World.Execute "send_http_data " & data_to_send`. Populate `data_to_send` from MSDP or your prompt.
 
 #### d. CMud Client
     * Not yet implemented. Similar to ZMud

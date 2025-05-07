@@ -41,16 +41,16 @@ using the 'send_http_config' alias.
 
 Usage:
 ------
-  send_http_data {your_payload_string}
+  send_http_data your_payload_string
 
 Example:
-  send_http_data namePlayer1Health100Mana50
+  send_http_data {CHARARCTER_NAME}{myChar}{HEALTH}{100}
 
-This will send the string "namePlayer1Health100Mana50" as the body
+This will send the string "{CHARARCTER_NAME}{myChar}{HEALTH}{100}" as the body
 of a POST request to the configured URL.
 
-The curl equivalent for the default configuration (if your payload is in a variable $msdp_payload) would be:
-  curl -s -o /dev/null -X POST --header "Content-Type: text/plain; charset=utf-8" --data "$msdp_payload" http://localhost:8080/update &
+The plugin uses MSXML2.XMLHTTP.6.0 for the HTTP request. If you have an older PC, you might try
+MSXML2.ServerXMLHTTP.3.0 instead.
 
 Note on Content-Type:
 The default is "text/plain; charset=utf-8" which is suitable for sending a raw string like "{key}{value}".
