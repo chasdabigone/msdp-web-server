@@ -1,6 +1,6 @@
 # MSDP Data Relay & Web Viewer
 
-This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Although it was developed for compatibility with MSDP, it can be used with any client that can send a http POST request (and potentially update faster than MSDP).
+This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Although it was developed for compatibility with MSDP, it can be used with any client that can send a http POST request, and can use any data.
 
 ![Web Client Screenshot](images/servershot.JPG)
 
@@ -78,15 +78,15 @@ dotenv
 HTTP_HOST=0.0.0.0
 HTTP_PORT=8081
 LOG_LEVEL=DEBUG
+STATIC_DIR_PATH=static
 
 # Common behavior control
 PRUNE_INTERVAL_SECONDS=120
 DATA_TIMEOUT_MINUTES=60
-BROADCAST_INTERVAL_SECONDS=0.1
+BROADCAST_INTERVAL_SECONDS=0.5
 CONNECTION_TIMEOUT_SECONDS=10
 
 # Rust specific
-STATIC_DIR_PATH=./custom_static_path
 RATE_LIMIT_RPS=15.0 # The number of requests per second an IP is allowed on average. This is the rate at which tokens are refilled.
 RATE_LIMIT_BURST_CAPACITY=30.0 # The maximum number of tokens an IP's bucket can hold. This allows for short bursts.
 RATE_LIMIT_VIOLATION_THRESHOLD=50 # The number of throttled requests (violations) an IP can make before being banned.
@@ -116,7 +116,7 @@ different host or port, you **must** update the URL in the client script.
     4.  You will need to modify the prompt trigger to capture your own prompt AND fprompt (you may need 2 triggers).
     5.  **Modify URL if needed:** The script sends data to
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
-        URL in the `#ALIAS sendData` line.
+        URL in the `sendData` alias.
     6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{Thoric} or {CHARACTER_NAME}{@character} where you define the variable.
     7.  Populate variables like `@curHP` `@curMana` `@opponentName` etc. from your prompt AND fprompt.
 *   **Functionality**:
@@ -170,8 +170,7 @@ different host or port, you **must** update the URL in the client script.
     python server.py
     ```
     The server will start, respecting environment variables (e.g., from
-    `python_server/.env` or set in the shell). By default (if `HTTP_HOST` is
-    `localhost`), it listens on `http://localhost:HTTP_PORT`.
+    `python_server/.env` or set in the shell). By default it listens on `http://localhost:8080`.
 
 #### b. Rust Server
 
@@ -196,9 +195,8 @@ different host or port, you **must** update the URL in the client script.
         ./target/release/rust_data_server # (or rust_msdp_server if that's the package name)
         ```
     The server will start, respecting environment variables (e.g., from
-    `rust_server/.env` or set in the shell). By default (if `HTTP_HOST` is
-    `0.0.0.0`), it listens on `http://0.0.0.0:HTTP_PORT` (accessible via
-    `http://localhost:HTTP_PORT` or your machine's local IP address).
+    `rust_server/.env` or set in the shell). By default it listens on `http://127.0.0.1:8080` accessible via
+    `http://localhost:8080`
 
 ### 3. Web Viewer
 

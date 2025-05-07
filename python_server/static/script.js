@@ -1,5 +1,5 @@
 // --- Configuration ---
-const SERVER_HOST = "localhost"; // Make sure this is correct
+const SERVER_HOST = "129.158.239.187"; // Make sure this is correct
 const SERVER_PORT = 8080;
 // Get CSS variables - ensure :root is parsed before this script runs
 // If this script is in <head> without defer, it might not get the values immediately.
@@ -382,7 +382,7 @@ function clearCard(cardElement) {
 
      els.favorStyleLine.style.display = 'none';
      els.stylePart.textContent = "Style: N/A"; els.stylePart.style.display = 'none';
-     els.eqHitsPart.textContent = "EQ Hits: N/A"; els.eqHitsPart.style.display = 'none';
+     els.eqHitsPart.textContent = "EQHits: N/A"; els.eqHitsPart.style.display = 'none';
      els.flyPart.style.display = 'none'; if (els.flyCheckbox) els.flyCheckbox.checked = false;
      els.visPart.textContent = "Vis: N/A"; els.visPart.style.display = 'none';
      els.alignmentPart.textContent = "Align: N/A"; els.alignmentPart.style.display = 'none'; // ADDED
@@ -550,7 +550,7 @@ function updateCardData(cardElement, charName, data) {
   let showStylePart = false, showEqHitsPart = false, showFlyPart = false, showVisPart = false, showAlignmentPart = false, showFavorPart = false; 
 
   if (styleIsValid) { els.stylePart.textContent = `Style: ${String(styleValue)}`; showStylePart = true; }
-  if (eqHitsIsValid) { els.eqHitsPart.textContent = `EQ Hits: ${String(eqHits)}`; showEqHitsPart = true; }
+  if (eqHitsIsValid) { els.eqHitsPart.textContent = `EQHits: ${String(eqHits)}`; showEqHitsPart = true; }
   if (flyKeyExists) { showFlyPart = true; if (els.flyCheckbox) els.flyCheckbox.checked = (flyingValue === 'Y'); } else { if (els.flyCheckbox) els.flyCheckbox.checked = false; }
   if (visKeyExists) { showVisPart = true; if (els.visPart) els.visPart.textContent = `Vis: ${(visValue === null || visValue === undefined) ? "(None)" : String(visValue)}`; }
   if (alignmentIsValid) { els.alignmentPart.textContent = `Align: ${String(alignmentValue)}`; showAlignmentPart = true; } 
