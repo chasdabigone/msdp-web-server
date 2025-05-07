@@ -63,7 +63,7 @@ You only need to run **one** of these server implementations. Both servers are c
     *   Connects to the server's WebSocket endpoint.
     *   Receives JSON data and dynamically renders character cards.
 
-    ## Server Configuration (Environment Variables)
+## Server Configuration (Environment Variables)
 
 Both Python and Rust servers can be configured using environment variables. You
 can set these variables directly in your shell or by creating a `.env` file in
@@ -117,7 +117,7 @@ different host or port, you **must** update the URL in the client script.
     5.  **Modify URL if needed:** The script sends data to
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
         URL in the `sendData` alias.
-    6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{Thoric} or {CHARACTER_NAME}{@character} where you define the variable.
+    6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{Thoric} or {CHARACTER_NAME}{@character} in the `buildData` alias.
     7.  Populate variables like `@curHP` `@curMana` `@opponentName` etc. from your prompt AND fprompt.
 *   **Functionality**:
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
@@ -143,7 +143,10 @@ different host or port, you **must** update the URL in the client script.
         `#VAR update_interval`).
 
 #### c. MUSH Client
-    * Not yet implemented. Similar to TinTin++
+    * Install the `HttpDataSender.xml' plugin located in the folder `MUSHClient`
+    * Configure the URL
+    * Use `send_http_data {CHARACTER_NAME}{MyName}{HEALTH}{100}` etc
+    * Make a trigger that uses your MSDP handshake or your prompt to send  `World.Execute "send_http_data " & data_to_send`
 
 #### d. CMud Client
     * Not yet implemented. Similar to TinTin++
