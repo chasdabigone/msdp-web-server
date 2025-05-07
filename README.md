@@ -1,6 +1,6 @@
 # MSDP Data Relay & Web Viewer
 
-This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Compatible with any client that can send a http POST request.
+This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Although it was developed for compatibility with MSDP, it can be used with any client that can send a http POST request.
 
 ![Web Client Screenshot](images/servershot.JPG)
 
@@ -119,10 +119,11 @@ different host or port, you **must** update the URL in the client script.
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
         URL in the `#ALIAS sendData` line.
     6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{myCharacter}
+    7.  Populate variables like `@curHP` `@curMana` etc. from your prompt. You need to build a string like `{OPPONENT_HEALTH}{A dragon}` for the `@opponentHP` or `@opponentName` variables.
 *   **Functionality**:
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
     *   Automatically sends data on prompt updates if data has changed.
-    *   Includes a spell/affect duration tracking system.
+    *   Includes a spell/affect duration tracking system using an `#ALARM`.
 
 #### b. Tintin++ Client
 
