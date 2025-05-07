@@ -149,7 +149,7 @@ different host or port, you **must** update the URL in the client script.
     * Make a trigger that uses your MSDP handshake or your prompt to send  `World.Execute "send_http_data " & data_to_send`
 
 #### d. CMud Client
-    * Not yet implemented. Similar to TinTin++
+    * Not yet implemented. Similar to ZMud
 
 ### 2. Backend Servers (Choose ONE)
 
