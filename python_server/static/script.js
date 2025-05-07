@@ -1,5 +1,5 @@
 // --- Configuration ---
-const SERVER_HOST = "129.158.239.187"; // Make sure this is correct
+const SERVER_HOST = "localhost"; // Make sure this is correct
 const SERVER_PORT = 8080;
 // Get CSS variables - ensure :root is parsed before this script runs
 // If this script is in <head> without defer, it might not get the values immediately.
