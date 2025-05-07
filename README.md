@@ -74,7 +74,7 @@ file if it exists.
 **Example `.env` file:**
 ```
 dotenv
-# Common for both servers (use appropriate variable name)
+# Common for both servers
 HTTP_HOST=0.0.0.0
 HTTP_PORT=8081
 LOG_LEVEL=DEBUG
@@ -138,7 +138,7 @@ different host or port, you **must** update the URL in the client script.
     *   Uses a `#ticker` to periodically send the content of the `$msdp_info`
         variable.
     *   Ensure your Tintin++ setup populates `$msdp_info`.
-    *   Default update interval is `0.5` seconds (configurable via
+    *   Default update interval is `1` seconds (configurable via
         `#VAR update_interval`).
 
 #### c. MUSH Client
