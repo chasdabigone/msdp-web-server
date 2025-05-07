@@ -9,10 +9,10 @@ const SHOW_BLINDNESS_INDICATOR = true; // true to show 'Cannot See Opponent' war
 
 // Define which items appear in the Info Bar (Favor/Style line).
 // Order in this array affects the order of custom items.
-// Predefined items (STYLE, EQHITS, etc.) will use their specific HTML elements if present.
+// Predefined items (STYLE, FAVOR, EQUIP_HITS etc.) will use their specific HTML elements if present.
 // Other items (e.g., "LAST_COMMAND", "ROOM_VNUM") will be dynamically created.
 // Values should match keys in your character data object.
-const INFO_BAR_ITEMS = ["STYLE", "EQHITS", "FLYING", "VIS", "ALIGNMENT", "FAVOR"];
+const INFO_BAR_ITEMS = ["STYLE", "FLYING", "VIS", "ALIGNMENT", "FAVOR", "EQUIP_HITS"];
 // --- End of UI Element Visibility Configuration ---
 
 
@@ -558,7 +558,7 @@ function updateCardData(cardElement, charName, data) {
             }
             handledAsPredefined = true;
             break;
-        case "EQHITS":
+        case "EQUIP_HITS":
             value = data.EQUIP_HITS;
             isValid = (value !== undefined && value !== null && value !== "");
             if (isValid && els.eqHitsPart) {

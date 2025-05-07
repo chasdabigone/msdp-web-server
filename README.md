@@ -223,6 +223,8 @@ different host or port, you **must** update the URL in the client script.
         (`localhost:8080`), you **must** update the `HTTP_HOST` and
         `HTTP_PORT` JavaScript constants at the top of the `<script>`
         section in `script.js`.
+    *   Turn MUD-specific alerts off by changing the variables at the start of `script.js`.
+    *   Modify `const INFO_BAR_ITEMS` to add or remove your own custom keys in the info bar.
 *   **Features**:
     *   Dynamic character cards, dark mode toggle, collapsible list, expandable
         cards, status indicators, responsive layout.
