@@ -15,8 +15,8 @@ from dotenv import load_dotenv
 load_dotenv() 
 
 # --- Configuration ---
-SERVER_HOST = os.getenv("SERVER_HOST", "localhost")
-SERVER_PORT = int(os.getenv("SERVER_PORT", 8080))
+HTTP_HOST = os.getenv("HTTP_HOST", "localhost")
+HTTP_PORT = int(os.getenv("HTTP_PORT", 8080))
 PRUNE_INTERVAL_SECONDS = int(os.getenv("PRUNE_INTERVAL_SECONDS", 60))
 DATA_TIMEOUT_MINUTES = int(os.getenv("DATA_TIMEOUT_MINUTES", 30))
 BROADCAST_INTERVAL_SECONDS = float(os.getenv("BROADCAST_INTERVAL_SECONDS", 0.2))
@@ -511,11 +511,11 @@ if __name__ == "__main__":
 
         http_runner_main = web.AppRunner(app)
         loop.run_until_complete(http_runner_main.setup())
-        site = web.TCPSite(http_runner_main, SERVER_HOST, SERVER_PORT)
+        site = web.TCPSite(http_runner_main, HTTP_HOST, HTTP_PORT)
         loop.run_until_complete(site.start())
 
-        app_logger.info(f"Started HTTP & WebSocket server on http://{SERVER_HOST}:{SERVER_PORT}")
-        app_logger.info(f"WebSocket clients connect to ws://{SERVER_HOST}:{SERVER_PORT}/ws")
+        app_logger.info(f"Started HTTP & WebSocket server on http://{HTTP_HOST}:{HTTP_PORT}")
+        app_logger.info(f"WebSocket clients connect to ws://{HTTP_HOST}:{HTTP_PORT}/ws")
         app_logger.info("Server running. Press Ctrl+C to stop.")
         loop.run_forever()
 

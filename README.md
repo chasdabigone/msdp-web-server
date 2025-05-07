@@ -1,6 +1,6 @@
 # MSDP Data Relay & Web Viewer
 
-This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Although it was developed for compatibility with MSDP, it can be used with any client that can send a http POST request.
+This project provides a system to relay data from MUD (Multi-User Dungeon) clients like ZMud and Tintin++ to a backend server, which then broadcasts this data to a real-time web-based character viewer. Although it was developed for compatibility with MSDP, it can be used with any client that can send a http POST request (and potentially update faster than MSDP).
 
 ![Web Client Screenshot](images/servershot.JPG)
 
@@ -75,12 +75,11 @@ file if it exists.
 ```
 dotenv
 # Common for both servers (use appropriate variable name)
-# For Python: SERVER_HOST=0.0.0.0
-# For Rust:   HTTP_HOST=0.0.0.0
+HTTP_HOST=0.0.0.0
 HTTP_PORT=8081
 LOG_LEVEL=DEBUG
 
-# Server-specific or common behavior control
+# Common behavior control
 PRUNE_INTERVAL_SECONDS=120
 DATA_TIMEOUT_MINUTES=60
 BROADCAST_INTERVAL_SECONDS=0.1
