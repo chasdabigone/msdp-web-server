@@ -98,7 +98,7 @@ RATE_LIMIT_CLEANUP_INTERVAL_SECONDS=1200 # How often (in seconds) the server cle
 
 ### 1. MUD Clients
 
-You'll need to install the appropriate script in your MUD client.
+You'll need to install the appropriate script in your MUD client. There are many ways to get data and these are just examples.
 
 **Important:** The client scripts default to sending data to
 `http://localhost:8080/update`. If you configure your server to use a
@@ -123,6 +123,7 @@ different host or port, you **must** update the URL in the client script.
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
     *   Automatically sends data on prompt updates if data has changed.
     *   Includes a spell/affect duration tracking system using an `#ALARM`.
+    *   The ZMud script was created for use on [Realms of Despair](https://realmsofdespair.com) and may have to be modified to be compatible with other MUDs
 
 #### b. Tintin++ Client
 
