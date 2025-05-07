@@ -1,4 +1,4 @@
-#NOP Broadcast MSDP info to server with #ticker using $msdp_info variable (seconds)
+#NOP Broadcast MSDP info to server with #ticker using $msdp_info variable
 
 #VAR update_interval {1}
 
