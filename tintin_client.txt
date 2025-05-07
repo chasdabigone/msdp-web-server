@@ -5,6 +5,6 @@
 #ticker {server} {
      #VAR msdp_payload {$msdp_info};
      #IF {"$msdp_payload" != ""} {
-       #SYSTEM {curl -s -o /dev/null --max-time 1 -X POST --data "$msdp_payload" http://localhost:8080/update &};
+       #SYSTEM {curl -s -o /dev/null --max-time $update_interval -X POST --data "$msdp_payload" http://localhost:8080/update &};
      };
 } {$update_interval}
