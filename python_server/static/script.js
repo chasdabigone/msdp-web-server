@@ -1,9 +1,22 @@
 // --- Configuration ---
 const SERVER_HOST = "localhost"; // Make sure this is correct
 const SERVER_PORT = 8080;
+
+// --- UI Element Visibility Configuration ---
+const SHOW_LAG_INDICATOR = true;        // true to show lag bar/status, false to hide
+const SHOW_NO_SANC_INDICATOR = true;  // true to show 'No Sanctuary' warning, false to hide
+const SHOW_BLINDNESS_INDICATOR = true; // true to show 'Cannot See Opponent' warning, false to hide
+
+// Define which items appear in the Info Bar (Favor/Style line).
+// Order in this array affects the order of custom items.
+// Predefined items (STYLE, EQHITS, etc.) will use their specific HTML elements if present.
+// Other items (e.g., "LAST_COMMAND", "ROOM_VNUM") will be dynamically created.
+// Values should match keys in your character data object.
+const INFO_BAR_ITEMS = ["STYLE", "EQHITS", "FLYING", "VIS", "ALIGNMENT", "FAVOR"];
+// --- End of UI Element Visibility Configuration ---
+
+
 // Get CSS variables - ensure :root is parsed before this script runs
-// If this script is in <head> without defer, it might not get the values immediately.
-// Moving script to end of body or using DOMContentLoaded ensures CSS is available.
 let MAX_CARDS, VAMPIRE_CLASSES, BLOOD_MAX, MAX_OPPONENT_NAME_LENGTH, RECONNECT_DELAY_MS, SANCTUARY_AFFECTS;
 
 const LS_SELECTION_KEY = 'characterViewerSelection';
@@ -25,11 +38,11 @@ let characterListElement, cardGridElement, cardTemplate, connectionStatusIndicat
 function initializeCssVariables() {
     const rootStyle = getComputedStyle(document.documentElement);
     MAX_CARDS = parseInt(rootStyle.getPropertyValue('--max-cards') || '8');
-    VAMPIRE_CLASSES = new Set(["Vampire", "Dread Vampire","Dread vampire"]); // Keep as is or derive if complex
+    VAMPIRE_CLASSES = new Set(["Vampire", "Dread Vampire","Dread vampire"]);
     BLOOD_MAX = parseInt(rootStyle.getPropertyValue('--blood-max') || '60');
     MAX_OPPONENT_NAME_LENGTH = parseInt(rootStyle.getPropertyValue('--max-opponent-name-length') || '16');
     RECONNECT_DELAY_MS = parseInt(rootStyle.getPropertyValue('--reconnect-delay-ms') || '5000');
-    SANCTUARY_AFFECTS = new Set([ // Keep as is or derive if complex
+    SANCTUARY_AFFECTS = new Set([
         "sanctuary", "greater sanctuary", "infernal sanctity",
         "holy sanctity", "nadur dion", "prophetic aura",
     ]);
@@ -342,8 +355,9 @@ function createCardElement() {
         flyPart: cardClone.querySelector('.fly-part'),
         flyCheckbox: cardClone.querySelector('.fly-part input[type="checkbox"]'),
         visPart: cardClone.querySelector('.vis-part'),
-        alignmentPart: cardClone.querySelector('.favor-style-line .alignment-part'), // ADDED
+        alignmentPart: cardClone.querySelector('.favor-style-line .alignment-part'),
         favorPart: cardClone.querySelector('.favor-style-line .favor-part'),
+        customInfoItemsContainer: cardClone.querySelector('.custom-info-items-container'), // ADDED
         affectsSection: cardClone.querySelector('.affects-section'),
         affectsText: cardClone.querySelector('.affects-text'),
         expandedSection: cardClone.querySelector('.expanded-section'),
@@ -367,9 +381,17 @@ function clearCard(cardElement) {
      const els = cardElement._elements;
 
      els.nameText.textContent = "Character Name";
-     if (els.lagBarFg) els.lagBarFg.style.width = '0%';
-     if (els.lag) els.lag.classList.remove('lag-ok', 'lag-high', 'lag-critical');
-     els.lag.title = "Lag Status";
+
+     if (els.lag) {
+        if (SHOW_LAG_INDICATOR) {
+            els.lag.style.display = 'flex';
+            if (els.lagBarFg) els.lagBarFg.style.width = '0%';
+            els.lag.classList.remove('lag-ok', 'lag-high', 'lag-critical');
+            els.lag.title = "Lag Status";
+        } else {
+            els.lag.style.display = 'none';
+        }
+     }
 
      els.class.textContent = "Class";
      updateBar(els.hpBarFg, els.hpBarText, 0, 1, 'HP');
@@ -380,13 +402,15 @@ function clearCard(cardElement) {
      els.opponentLabel.title = '';
      els.opponentValue.textContent = "N/A";
 
-     els.favorStyleLine.style.display = 'none';
-     els.stylePart.textContent = "Style: N/A"; els.stylePart.style.display = 'none';
-     els.eqHitsPart.textContent = "EQHits: N/A"; els.eqHitsPart.style.display = 'none';
-     els.flyPart.style.display = 'none'; if (els.flyCheckbox) els.flyCheckbox.checked = false;
-     els.visPart.textContent = "Vis: N/A"; els.visPart.style.display = 'none';
-     els.alignmentPart.textContent = "Align: N/A"; els.alignmentPart.style.display = 'none'; // ADDED
-     els.favorPart.textContent = "Favor: N/A"; els.favorPart.style.display = 'none';
+     els.favorStyleLine.style.display = 'none'; // Hide the whole line
+     // Reset predefined parts (they will be shown by updateCardData if configured and valid)
+     if(els.stylePart) { els.stylePart.textContent = "Style: N/A"; els.stylePart.style.display = 'none'; }
+     if(els.eqHitsPart) { els.eqHitsPart.textContent = "EQHits: N/A"; els.eqHitsPart.style.display = 'none'; }
+     if(els.flyPart) { els.flyPart.style.display = 'none'; if (els.flyCheckbox) els.flyCheckbox.checked = false; }
+     if(els.visPart) { els.visPart.textContent = "Vis: N/A"; els.visPart.style.display = 'none'; }
+     if(els.alignmentPart) { els.alignmentPart.textContent = "Align: N/A"; els.alignmentPart.style.display = 'none'; }
+     if(els.favorPart) { els.favorPart.textContent = "Favor: N/A"; els.favorPart.style.display = 'none'; }
+     if (els.customInfoItemsContainer) els.customInfoItemsContainer.innerHTML = ''; // Clear dynamic items
 
      els.affectsSection.style.display = 'none'; els.affectsText.textContent = "";
      els.expandedSection.style.display = 'none'; els.expandedText.textContent = "";
@@ -400,9 +424,7 @@ function clearCard(cardElement) {
 
 function updateCardData(cardElement, charName, data) {
   const els = cardElement._elements;
-  if (!els) {
-      return;
-  }
+  if (!els) return;
 
   const isMainConnected = connectionStatusIndicator.classList.contains('connected');
   const isExpanded = cardElement.dataset.isExpanded === 'true';
@@ -414,42 +436,37 @@ function updateCardData(cardElement, charName, data) {
 
   if (!isMainConnected) {
       cardElement.classList.add('card-offline');
-      let nameDisplay = charName;
-      if (data && data.CHARACTER_NAME) {
-          nameDisplay = data.CHARACTER_NAME;
+      els.nameText.textContent = `${data?.CHARACTER_NAME || charName} (Offline)`;
+
+      if (els.lag) {
+        if (SHOW_LAG_INDICATOR) {
+            els.lag.style.display = 'flex';
+            if(els.lagBarFg) els.lagBarFg.style.width = '0%';
+            els.lag.classList.remove('lag-ok', 'lag-high', 'lag-critical');
+            els.lag.title = "Lag: Offline";
+        } else {
+            els.lag.style.display = 'none';
+        }
       }
-      els.nameText.textContent = `${nameDisplay} (Offline)`;
-
-      if(els.lagBarFg) els.lagBarFg.style.width = '0%';
-      if(els.lag) els.lag.classList.remove('lag-ok', 'lag-high', 'lag-critical');
-      els.lag.title = "Lag: Offline";
       els.class.textContent = data ? (data.CLASS || "N/A") : "N/A";
-
       const hp = data ? parseInt(data.HEALTH || 0) : 0;
       const hpMax = data ? Math.max(1, parseInt(data.HEALTH_MAX || 1)) : 1;
       updateBar(els.hpBarFg, els.hpBarText, hp, hpMax, 'HP');
-
       if (data && VAMPIRE_CLASSES.has(data.CLASS || "")) {
-          const blood = parseInt(data.BLOOD || 0);
-          updateBar(els.resourceBarFg, els.resourceBarText, blood, BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
+          updateBar(els.resourceBarFg, els.resourceBarText, parseInt(data.BLOOD || 0), BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
       } else {
-          const mana = data ? parseInt(data.MANA || 0) : 0;
-          const manaMax = data ? Math.max(1, parseInt(data.MANA_MAX || 1)) : 1;
-          updateBar(els.resourceBarFg, els.resourceBarText, mana, manaMax, 'Mana', els.resourceBar, els.resourceLabel);
+          updateBar(els.resourceBarFg, els.resourceBarText, data ? parseInt(data.MANA || 0) : 0, data ? Math.max(1, parseInt(data.MANA_MAX || 1)) : 1, 'Mana', els.resourceBar, els.resourceLabel);
       }
-
       els.opponentLine.style.display = 'none';
-      els.favorStyleLine.style.display = 'none';
+      els.favorStyleLine.style.display = 'none'; // Hide the whole line
+      if (els.customInfoItemsContainer) els.customInfoItemsContainer.innerHTML = ''; // Clear dynamic items
       els.affectsSection.style.display = 'none'; els.affectsText.textContent = '';
       els.blindnessIndicator.style.display = 'none';
       els.noSancIndicator.style.display = 'none';
-
       els.expandButton.disabled = true;
       els.expandButton.textContent = "+";
       els.expandedSection.style.display = 'none'; els.expandedText.textContent = '';
       if (isExpanded) cardElement.dataset.isExpanded = "false";
-
-
       els.connectionIndicator.className = 'card-connection-indicator disconnected';
       els.connectionIndicator.title = connectionStatusIndicator.classList.contains('connecting') ? 'Connecting...' : 'Disconnected (Main)';
       return;
@@ -463,108 +480,162 @@ function updateCardData(cardElement, charName, data) {
   els.connectionIndicator.className = `card-connection-indicator ${isCharConnected ? 'connected' : 'disconnected'}`;
   els.connectionIndicator.title = isCharConnected ? 'Connected' : 'Disconnected (Character)';
 
-  const charClass = data.CLASS || "N/A";
-  const hp = parseInt(data.HEALTH || 0);
-  const hpMax = Math.max(1, parseInt(data.HEALTH_MAX || 1));
-  const mana = parseInt(data.MANA || 0);
-  const manaMax = Math.max(1, parseInt(data.MANA_MAX || 1));
-  const blood = parseInt(data.BLOOD || 0);
-  const affectsData = data.AFFECTS;
-  const favor = data.FAVOR;
-  const styleValue = data.STYLE ?? data.COMBAT_STYLE;
-  const oppHp = data.OPPONENT_HEALTH;
-  const oppNameRaw = data.OPPONENT_NAME;
-  const lagValue = data.WAIT_TIME ?? "";
-  const eqHits = data.EQUIP_HITS;
-  const flyingValue = data.FLYING;
-  const visValue = data.VIS;
-  const alignmentValue = data.ALIGNMENT; 
-
   els.nameText.textContent = data.CHARACTER_NAME || charName;
 
-  let lagPercentage = 0;
-  let lagClass = "";
-  let lagTitle = "Lag: Unknown";
-  if (lagValue === "!!!!!") { lagPercentage = 100; lagClass = "lag-critical"; lagTitle = "Lag: Critical (!!!!!)"; }
-  else {
-      const sanitizedLag = String(lagValue).replace(/[^|]/g, '');
-      const pipeCount = sanitizedLag.length;
-      if (pipeCount === 0) { lagPercentage = 0; lagTitle = "Lag: OK (0)"; }
-      else if (pipeCount <= 3) { lagClass = "lag-ok"; lagPercentage = pipeCount * 20; lagTitle = `Lag: OK (${pipeCount})`;}
-      else if (pipeCount === 4) { lagPercentage = 80; lagClass = "lag-high"; lagTitle = "Lag: High (4)";}
-      else { lagPercentage = 100; lagClass = "lag-high"; lagTitle = `Lag: High (${pipeCount}+)`;}
-  }
-  if (els.lagBarFg) els.lagBarFg.style.width = `${lagPercentage}%`;
   if (els.lag) {
-      els.lag.className = 'char-lag';
-      if (lagClass) els.lag.classList.add(lagClass);
-      els.lag.title = lagTitle;
+    if (SHOW_LAG_INDICATOR) {
+        els.lag.style.display = 'flex';
+        const lagValue = data.WAIT_TIME ?? "";
+        let lagPercentage = 0, lagClass = "", lagTitle = "Lag: Unknown";
+        if (lagValue === "!!!!!") { lagPercentage = 100; lagClass = "lag-critical"; lagTitle = "Lag: Critical (!!!!!)"; }
+        else {
+            const pipeCount = (String(lagValue).match(/\|/g) || []).length;
+            if (pipeCount === 0) { lagPercentage = 0; lagTitle = "Lag: OK (0)"; }
+            else if (pipeCount <= 3) { lagClass = "lag-ok"; lagPercentage = pipeCount * 20; lagTitle = `Lag: OK (${pipeCount})`;}
+            else if (pipeCount === 4) { lagPercentage = 80; lagClass = "lag-high"; lagTitle = "Lag: High (4)";}
+            else { lagPercentage = 100; lagClass = "lag-high"; lagTitle = `Lag: High (${pipeCount}+)`;}
+        }
+        if (els.lagBarFg) els.lagBarFg.style.width = `${lagPercentage}%`;
+        els.lag.className = 'char-lag'; if (lagClass) els.lag.classList.add(lagClass);
+        els.lag.title = lagTitle;
+    } else {
+        els.lag.style.display = 'none';
+    }
   }
 
+  const charClass = data.CLASS || "N/A";
   els.class.textContent = charClass;
-  updateBar(els.hpBarFg, els.hpBarText, hp, hpMax, 'HP');
-
+  updateBar(els.hpBarFg, els.hpBarText, parseInt(data.HEALTH || 0), Math.max(1, parseInt(data.HEALTH_MAX || 1)), 'HP');
   if (VAMPIRE_CLASSES.has(charClass)) {
-       updateBar(els.resourceBarFg, els.resourceBarText, blood, BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
+       updateBar(els.resourceBarFg, els.resourceBarText, parseInt(data.BLOOD || 0), BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
   } else {
-       updateBar(els.resourceBarFg, els.resourceBarText, mana, manaMax, 'Mana', els.resourceBar, els.resourceLabel);
+       updateBar(els.resourceBarFg, els.resourceBarText, parseInt(data.MANA || 0), Math.max(1, parseInt(data.MANA_MAX || 1)), 'Mana', els.resourceBar, els.resourceLabel);
   }
 
-  // --- MODIFIED OPPONENT LINE LOGIC ---
+  const oppNameRaw = data.OPPONENT_NAME;
   const oppNameIsValid = typeof oppNameRaw === 'string' && oppNameRaw !== "";
-  const isVisuallyBlind = (oppNameRaw === 'You cannot see your opponent.'); // This definition is fine here
-
+  const isVisuallyBlind = (oppNameRaw === 'You cannot see your opponent.');
   if (oppNameIsValid) {
        els.opponentLine.style.display = 'flex';
-
        let displayName = oppNameRaw;
-       if (displayName.length > MAX_OPPONENT_NAME_LENGTH) {
-           displayName = displayName.substring(0, MAX_OPPONENT_NAME_LENGTH) + "...";
-       }
+       if (displayName.length > MAX_OPPONENT_NAME_LENGTH) displayName = displayName.substring(0, MAX_OPPONENT_NAME_LENGTH) + "...";
        els.opponentLabel.textContent = displayName;
-       // Set title to the full raw name if it was truncated for display
        els.opponentLabel.title = (oppNameRaw.length > MAX_OPPONENT_NAME_LENGTH) ? oppNameRaw : displayName;
-
-       // Handle opponent HP for the value part
-       const oppHpDisplayIsValid = (oppHp !== undefined && oppHp !== null && oppHp !== "N/A");
-       if (oppHpDisplayIsValid) {
-           els.opponentValue.textContent = `${oppHp}%`;
-       } else {
-           els.opponentValue.textContent = "N/A"; // Or other placeholder if HP is not available but name is
-       }
+       const oppHp = data.OPPONENT_HEALTH;
+       els.opponentValue.textContent = (oppHp !== undefined && oppHp !== null && oppHp !== "N/A") ? `${oppHp}%` : "N/A";
   } else {
        els.opponentLine.style.display = 'none';
-       // Reset opponent info to defaults (consistent with clearCard)
-       els.opponentLabel.textContent = "Opponent HP:";
-       els.opponentLabel.title = '';
-       els.opponentValue.textContent = "N/A";
+       els.opponentLabel.textContent = "Opponent HP:"; els.opponentLabel.title = ''; els.opponentValue.textContent = "N/A";
   }
-  // --- END OF MODIFIED OPPONENT LINE LOGIC ---
 
-  const favorIsValid = (favor !== undefined && favor !== null && favor !== "N/A");
-  const styleIsValid = (styleValue !== undefined && styleValue !== null && styleValue !== "");
-  const eqHitsIsValid = (eqHits !== undefined && eqHits !== null && eqHits !== "");
-  const flyKeyExists = data.hasOwnProperty('FLYING');
-  const visKeyExists = data.hasOwnProperty('VIS');
-  const alignmentIsValid = (alignmentValue !== undefined && alignmentValue !== null && alignmentValue !== ""); 
-  let showStylePart = false, showEqHitsPart = false, showFlyPart = false, showVisPart = false, showAlignmentPart = false, showFavorPart = false; 
+  // --- Info Bar (Favor/Style Line) ---
+  let favorStyleLineVisible = false;
+  if (els.customInfoItemsContainer) els.customInfoItemsContainer.innerHTML = ''; // Clear previous dynamic items
 
-  if (styleIsValid) { els.stylePart.textContent = `Style: ${String(styleValue)}`; showStylePart = true; }
-  if (eqHitsIsValid) { els.eqHitsPart.textContent = `EQHits: ${String(eqHits)}`; showEqHitsPart = true; }
-  if (flyKeyExists) { showFlyPart = true; if (els.flyCheckbox) els.flyCheckbox.checked = (flyingValue === 'Y'); } else { if (els.flyCheckbox) els.flyCheckbox.checked = false; }
-  if (visKeyExists) { showVisPart = true; if (els.visPart) els.visPart.textContent = `Vis: ${(visValue === null || visValue === undefined) ? "(None)" : String(visValue)}`; }
-  if (alignmentIsValid) { els.alignmentPart.textContent = `Align: ${String(alignmentValue)}`; showAlignmentPart = true; } 
-  if (favorIsValid) { els.favorPart.textContent = `Favor: ${String(favor)}`; showFavorPart = true; }
+  // Ensure predefined parts are initially hidden, they will be shown if configured and data is valid
+  if (els.stylePart) els.stylePart.style.display = 'none';
+  if (els.eqHitsPart) els.eqHitsPart.style.display = 'none';
+  if (els.flyPart) els.flyPart.style.display = 'none';
+  if (els.visPart) els.visPart.style.display = 'none';
+  if (els.alignmentPart) els.alignmentPart.style.display = 'none';
+  if (els.favorPart) els.favorPart.style.display = 'none';
 
-  els.stylePart.style.display = showStylePart ? 'inline' : 'none';
-  els.eqHitsPart.style.display = showEqHitsPart ? 'inline' : 'none';
-  els.flyPart.style.display = showFlyPart ? 'inline' : 'none';
-  els.visPart.style.display = showVisPart ? 'inline' : 'none';
-  els.alignmentPart.style.display = showAlignmentPart ? 'inline' : 'none'; 
-  els.favorPart.style.display = showFavorPart ? 'inline' : 'none';
-  els.favorStyleLine.style.display = (showStylePart || showEqHitsPart || showFlyPart || showVisPart || showAlignmentPart || showFavorPart) ? 'flex' : 'none'; 
 
-  const { affectsStr, hasSanctuary } = parseAffects(affectsData);
+  INFO_BAR_ITEMS.forEach(itemKey => {
+    let value;
+    let isValid = false;
+    let handledAsPredefined = false;
+
+    // Handle predefined items first
+    switch (itemKey.toUpperCase()) {
+        case "STYLE":
+            value = data.STYLE ?? data.COMBAT_STYLE;
+            isValid = (value !== undefined && value !== null && value !== "");
+            if (isValid && els.stylePart) {
+                els.stylePart.textContent = `Style: ${String(value)}`;
+                els.stylePart.style.display = 'inline';
+                favorStyleLineVisible = true;
+            }
+            handledAsPredefined = true;
+            break;
+        case "EQHITS":
+            value = data.EQUIP_HITS;
+            isValid = (value !== undefined && value !== null && value !== "");
+            if (isValid && els.eqHitsPart) {
+                els.eqHitsPart.textContent = `EQHits: ${String(value)}`;
+                els.eqHitsPart.style.display = 'inline';
+                favorStyleLineVisible = true;
+            }
+            handledAsPredefined = true;
+            break;
+        case "FLYING":
+            isValid = data.hasOwnProperty('FLYING'); // Check for key presence
+            if (isValid && els.flyPart) {
+                els.flyPart.style.display = 'inline';
+                if (els.flyCheckbox) els.flyCheckbox.checked = (data.FLYING === 'Y');
+                favorStyleLineVisible = true;
+            } else if (els.flyCheckbox) { // Ensure checkbox is off if not configured or no data
+                 els.flyCheckbox.checked = false;
+            }
+            handledAsPredefined = true;
+            break;
+        case "VIS":
+            isValid = data.hasOwnProperty('VIS'); // Check for key presence
+            if (isValid && els.visPart) {
+                value = data.VIS;
+                els.visPart.textContent = `Vis: ${(value === null || value === undefined) ? "(None)" : String(value)}`;
+                els.visPart.style.display = 'inline';
+                favorStyleLineVisible = true;
+            }
+            handledAsPredefined = true;
+            break;
+        case "ALIGNMENT":
+            value = data.ALIGNMENT;
+            isValid = (value !== undefined && value !== null && value !== "");
+            if (isValid && els.alignmentPart) {
+                els.alignmentPart.textContent = `Align: ${String(value)}`;
+                els.alignmentPart.style.display = 'inline';
+                favorStyleLineVisible = true;
+            }
+            handledAsPredefined = true;
+            break;
+        case "FAVOR":
+            value = data.FAVOR;
+            isValid = (value !== undefined && value !== null && value !== "N/A");
+            if (isValid && els.favorPart) {
+                els.favorPart.textContent = `Favor: ${String(value)}`;
+                els.favorPart.style.display = 'inline';
+                favorStyleLineVisible = true;
+            }
+            handledAsPredefined = true;
+            break;
+    }
+
+    // If not handled as a predefined item, try to add it to the custom container
+    if (!handledAsPredefined && data.hasOwnProperty(itemKey) && els.customInfoItemsContainer) {
+        value = data[itemKey];
+        // Define "valid" for custom items: not null or undefined. Empty strings are ok.
+        isValid = (value !== null && value !== undefined);
+        if (isValid) {
+            const customSpan = document.createElement('span');
+            customSpan.className = 'info-bar-custom-item'; // Add a class for potential styling
+
+            // Create a friendlier display label from the itemKey
+            const displayLabel = itemKey
+                .replace(/_/g, ' ') // Replace underscores with spaces
+                .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()); // Capitalize each word
+
+            customSpan.textContent = `${displayLabel}: ${String(value)}`;
+            els.customInfoItemsContainer.appendChild(customSpan);
+            favorStyleLineVisible = true;
+        }
+    }
+  });
+  if (els.favorStyleLine) els.favorStyleLine.style.display = favorStyleLineVisible ? 'flex' : 'none';
+  // --- End of Info Bar ---
+
+
+  const { affectsStr, hasSanctuary } = parseAffects(data.AFFECTS);
   if (affectsStr) {
       els.affectsText.textContent = affectsStr;
       els.affectsSection.style.display = 'block';
@@ -572,8 +643,8 @@ function updateCardData(cardElement, charName, data) {
       els.affectsSection.style.display = 'none';
       els.affectsText.textContent = '';
   }
-  els.blindnessIndicator.style.display = isVisuallyBlind ? 'block' : 'none';
-  els.noSancIndicator.style.display = (!hasSanctuary && affectsStr) ? 'block' : 'none';
+  els.blindnessIndicator.style.display = (SHOW_BLINDNESS_INDICATOR && isVisuallyBlind) ? 'block' : 'none';
+  els.noSancIndicator.style.display = (SHOW_NO_SANC_INDICATOR && !hasSanctuary && affectsStr) ? 'block' : 'none';
 
   els.expandButton.textContent = isExpanded ? "-" : "+";
   if (isExpanded) {
@@ -661,18 +732,34 @@ function formatFullData(data) {
      try {
          if (!data) return "No data available.";
          const preferredOrder = [
-            'CHARACTER_NAME', 'CLASS', 'RACE', 'LEVEL', 'ALIGNMENT', // Added ALIGNMENT
+            'CHARACTER_NAME', 'CLASS', 'RACE', 'LEVEL', 'ALIGNMENT',
             'HEALTH', 'HEALTH_MAX', 'MANA', 'MANA_MAX', 'BLOOD',
             'STYLE', 'COMBAT_STYLE', 'FAVOR',
             'OPPONENT_NAME', 'OPPONENT_HEALTH',
             'EQUIP_HITS', 'FLYING', 'VIS',
-            'AFFECTS', 'WAIT_TIME', 'LAG',
+            'AFFECTS', 'WAIT_TIME', 'LAG', // LAG is an alternative for WAIT_TIME here
             'ROOM_NAME', 'ROOM_EXITS', 'ROOM_VNUM',
             'CONNECTED', 'LAST_UPDATE'
          ];
+         // Add items from INFO_BAR_ITEMS to preferredOrder if not already there,
+         // to ensure they are shown in the expanded view if they exist in data.
+         INFO_BAR_ITEMS.forEach(item => {
+            if (!preferredOrder.includes(item.toUpperCase()) && !preferredOrder.includes(item)) { // Check both cases
+                // Try to find a sensible place to insert or just append
+                if (item.toUpperCase() === 'LAST_COMMAND') { // Example specific placement
+                    const affectsIndex = preferredOrder.indexOf('AFFECTS');
+                    if (affectsIndex > -1) preferredOrder.splice(affectsIndex + 1, 0, item);
+                    else preferredOrder.push(item);
+                } else {
+                    preferredOrder.push(item);
+                }
+            }
+         });
+
+
          const displayItems = [];
          const handledKeys = new Set();
-         const altKeys = {}; // You can group keys here for fewer keys in "full data" view
+         const altKeys = { 'LAG': 'WAIT_TIME', 'COMBAT_STYLE': 'STYLE' }; // Map alternative keys to preferred keys
 
          const parseExitsString = (exitsValue) => {
              const rawString = String(exitsValue).replace(/^.*?:\s*/, "").trim();
@@ -682,42 +769,45 @@ function formatFullData(data) {
          };
 
          preferredOrder.forEach(preferredKey => {
-             let dataKey = null;
-             if (data.hasOwnProperty(preferredKey)) dataKey = preferredKey;
-             else {
-                for(const alt in altKeys) if (altKeys[alt] === preferredKey && data.hasOwnProperty(alt)) { dataKey = alt; break; }
+             let dataKeyToUse = null;
+             let valueToDisplay;
+
+             if (data.hasOwnProperty(preferredKey)) {
+                 dataKeyToUse = preferredKey;
+                 valueToDisplay = data[dataKeyToUse];
+             } else if (altKeys[preferredKey] && data.hasOwnProperty(altKeys[preferredKey])) { // Check alternative key
+                 dataKeyToUse = altKeys[preferredKey];
+                 valueToDisplay = data[dataKeyToUse];
              }
 
-             if (dataKey && !handledKeys.has(dataKey)) {
-                 let value = data[dataKey];
+
+             if (dataKeyToUse && !handledKeys.has(dataKeyToUse) && !handledKeys.has(preferredKey)) {
                  let isHandled = false;
 
-                 if (dataKey === 'ROOM_EXITS') {
-                     if (typeof value === 'string') { value = parseExitsString(value); isHandled = true; }
-                     else if (typeof value === 'object' && value !== null) {
-                         value = Object.entries(value).filter(([, vnum]) => vnum !== null && vnum !== undefined).map(([dir]) => dir).join(', ') || "(None)";
+                 if (dataKeyToUse === 'ROOM_EXITS') {
+                     if (typeof valueToDisplay === 'string') { valueToDisplay = parseExitsString(valueToDisplay); isHandled = true; }
+                     else if (typeof valueToDisplay === 'object' && valueToDisplay !== null) {
+                         valueToDisplay = Object.entries(valueToDisplay).filter(([, vnum]) => vnum !== null && vnum !== undefined).map(([dir]) => dir).join(', ') || "(None)";
                          isHandled = true;
                      }
                  }
-                 if (!isHandled && dataKey === 'AFFECTS' && typeof value === 'object' && value !== null) {
-                     const { affectsStr } = parseAffects(value); value = affectsStr || "(None)"; isHandled = true;
+                 if (!isHandled && dataKeyToUse === 'AFFECTS' && typeof valueToDisplay === 'object' && valueToDisplay !== null) {
+                     const { affectsStr } = parseAffects(valueToDisplay); valueToDisplay = affectsStr || "(None)"; isHandled = true;
                  }
                  if (!isHandled) {
-                    if (value === null || value === undefined) value = "(Not Set)";
-                    else if (value === "") value = "(Empty)";
-                    else if (typeof value === 'object') value = JSON.stringify(value);
+                    if (valueToDisplay === null || valueToDisplay === undefined) valueToDisplay = "(Not Set)";
+                    else if (valueToDisplay === "") valueToDisplay = "(Empty)";
+                    else if (typeof valueToDisplay === 'object') valueToDisplay = JSON.stringify(valueToDisplay);
                  }
-                 const displayKey = altKeys[dataKey] || dataKey;
-                 if (!handledKeys.has(displayKey)) {
-                    displayItems.push({ key: displayKey, value: String(value) });
-                    handledKeys.add(displayKey); handledKeys.add(dataKey);
-                 }
+                 displayItems.push({ key: preferredKey, value: String(valueToDisplay) }); // Use preferredKey for display
+                 handledKeys.add(dataKeyToUse);
+                 handledKeys.add(preferredKey); // Mark preferredKey as handled too
              }
          });
 
          Object.keys(data).filter(key => !handledKeys.has(key)).sort().forEach(key => {
                  let value = data[key]; let isHandled = false;
-                 if (key === 'ROOM_EXITS') {
+                 if (key === 'ROOM_EXITS') { // Redundant if already handled, but safe
                      if (typeof value === 'string') { value = parseExitsString(value); isHandled = true; }
                      else if (typeof value === 'object' && value !== null) {
                          value = Object.entries(value).filter(([, vnum]) => vnum !== null && vnum !== undefined).map(([dir]) => dir).join(', ') || "(None)";
@@ -777,10 +867,10 @@ function toggleExpand(cardElement) {
 function applyTheme(theme) {
     if (theme === 'dark') {
         document.body.classList.add('dark-mode');
-        themeToggleButton.title = 'Switch to Light Theme';
+        if(themeToggleButton) themeToggleButton.title = 'Switch to Light Theme';
     } else {
         document.body.classList.remove('dark-mode');
-        themeToggleButton.title = 'Switch to Dark Theme';
+        if(themeToggleButton) themeToggleButton.title = 'Switch to Dark Theme';
     }
 }
 
@@ -794,7 +884,6 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM Loaded. Initializing...");
 
-    // --- Initialize DOM References ---
     characterListElement = document.getElementById('character-list');
     cardGridElement = document.getElementById('card-grid');
     cardTemplate = document.getElementById('card-template');
@@ -804,9 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
     collapseToggle = document.getElementById('collapse-toggle');
     themeToggleButton = document.getElementById('theme-toggle');
 
-    // Initialize CSS-dependent JS constants
     initializeCssVariables();
-
 
     if (themeToggleButton) {
          let preferredTheme = 'light';
@@ -849,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (let i = 0; i < MAX_CARDS; i++) {
         const newCard = createCardElement();
-        if (newCard) { cardElements.push(newCard); cardGridElement.appendChild(newCard); }
+        if (newCard) { cardElements.push(newCard); cardGridElement.appendChild(newCard); clearCard(newCard); }
     }
 
     updateCardAssignments();
