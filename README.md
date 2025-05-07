@@ -118,7 +118,7 @@ different host or port, you **must** update the URL in the client script.
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
         URL in the `#ALIAS sendData` line.
     6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{Thoric} or {CHARACTER_NAME}{@character} where you define the variable.
-    7.  Populate variables like `@curHP` `@curMana` etc. from your prompt AND fprompt. You need to build a string like `{OPPONENT_HEALTH}{A dragon}` for the `@opponentHP` or `@opponentName` variables.
+    7.  Populate variables like `@curHP` `@curMana` `@opponentName` etc. from your prompt AND fprompt.
 *   **Functionality**:
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
     *   Automatically sends data on prompt updates if data has changed.
@@ -224,7 +224,7 @@ different host or port, you **must** update the URL in the client script.
         cards, status indicators, responsive layout.
 *   **MUD Compatibility**:
     *   This web client was developed for compatibility with [Realms of Despair](https://realmsofdespair.com)
-    *   If your MUD provides different MSDP keys, or to add your own, you will need to modify this file.
+    *   If your MUD provides different MSDP keys, or to add your own, you will need to modify the webpage.
 
 ## Data Flow & Format
 

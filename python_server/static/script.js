@@ -399,174 +399,189 @@ function clearCard(cardElement) {
 }
 
 function updateCardData(cardElement, charName, data) {
-    const els = cardElement._elements;
-    if (!els) {
-        return;
-    }
+  const els = cardElement._elements;
+  if (!els) {
+      return;
+  }
 
-    const isMainConnected = connectionStatusIndicator.classList.contains('connected');
-    const isExpanded = cardElement.dataset.isExpanded === 'true';
+  const isMainConnected = connectionStatusIndicator.classList.contains('connected');
+  const isExpanded = cardElement.dataset.isExpanded === 'true';
 
-    if (isMainConnected && !data) {
-        clearCard(cardElement);
-        return;
-    }
+  if (isMainConnected && !data) {
+      clearCard(cardElement);
+      return;
+  }
 
-    if (!isMainConnected) {
-        cardElement.classList.add('card-offline');
-        let nameDisplay = charName;
-        if (data && data.CHARACTER_NAME) {
-            nameDisplay = data.CHARACTER_NAME;
-        }
-        els.nameText.textContent = `${nameDisplay} (Offline)`;
+  if (!isMainConnected) {
+      cardElement.classList.add('card-offline');
+      let nameDisplay = charName;
+      if (data && data.CHARACTER_NAME) {
+          nameDisplay = data.CHARACTER_NAME;
+      }
+      els.nameText.textContent = `${nameDisplay} (Offline)`;
 
-        if(els.lagBarFg) els.lagBarFg.style.width = '0%';
-        if(els.lag) els.lag.classList.remove('lag-ok', 'lag-high', 'lag-critical');
-        els.lag.title = "Lag: Offline";
-        els.class.textContent = data ? (data.CLASS || "N/A") : "N/A";
+      if(els.lagBarFg) els.lagBarFg.style.width = '0%';
+      if(els.lag) els.lag.classList.remove('lag-ok', 'lag-high', 'lag-critical');
+      els.lag.title = "Lag: Offline";
+      els.class.textContent = data ? (data.CLASS || "N/A") : "N/A";
 
-        const hp = data ? parseInt(data.HEALTH || 0) : 0;
-        const hpMax = data ? Math.max(1, parseInt(data.HEALTH_MAX || 1)) : 1;
-        updateBar(els.hpBarFg, els.hpBarText, hp, hpMax, 'HP');
+      const hp = data ? parseInt(data.HEALTH || 0) : 0;
+      const hpMax = data ? Math.max(1, parseInt(data.HEALTH_MAX || 1)) : 1;
+      updateBar(els.hpBarFg, els.hpBarText, hp, hpMax, 'HP');
 
-        if (data && VAMPIRE_CLASSES.has(data.CLASS || "")) {
-            const blood = parseInt(data.BLOOD || 0);
-            updateBar(els.resourceBarFg, els.resourceBarText, blood, BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
-        } else {
-            const mana = data ? parseInt(data.MANA || 0) : 0;
-            const manaMax = data ? Math.max(1, parseInt(data.MANA_MAX || 1)) : 1;
-            updateBar(els.resourceBarFg, els.resourceBarText, mana, manaMax, 'Mana', els.resourceBar, els.resourceLabel);
-        }
+      if (data && VAMPIRE_CLASSES.has(data.CLASS || "")) {
+          const blood = parseInt(data.BLOOD || 0);
+          updateBar(els.resourceBarFg, els.resourceBarText, blood, BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
+      } else {
+          const mana = data ? parseInt(data.MANA || 0) : 0;
+          const manaMax = data ? Math.max(1, parseInt(data.MANA_MAX || 1)) : 1;
+          updateBar(els.resourceBarFg, els.resourceBarText, mana, manaMax, 'Mana', els.resourceBar, els.resourceLabel);
+      }
 
-        els.opponentLine.style.display = 'none';
-        els.favorStyleLine.style.display = 'none';
-        els.affectsSection.style.display = 'none'; els.affectsText.textContent = '';
-        els.blindnessIndicator.style.display = 'none';
-        els.noSancIndicator.style.display = 'none';
+      els.opponentLine.style.display = 'none';
+      els.favorStyleLine.style.display = 'none';
+      els.affectsSection.style.display = 'none'; els.affectsText.textContent = '';
+      els.blindnessIndicator.style.display = 'none';
+      els.noSancIndicator.style.display = 'none';
 
-        els.expandButton.disabled = true;
-        els.expandButton.textContent = "+";
-        els.expandedSection.style.display = 'none'; els.expandedText.textContent = '';
-        if (isExpanded) cardElement.dataset.isExpanded = "false";
+      els.expandButton.disabled = true;
+      els.expandButton.textContent = "+";
+      els.expandedSection.style.display = 'none'; els.expandedText.textContent = '';
+      if (isExpanded) cardElement.dataset.isExpanded = "false";
 
 
-        els.connectionIndicator.className = 'card-connection-indicator disconnected';
-        els.connectionIndicator.title = connectionStatusIndicator.classList.contains('connecting') ? 'Connecting...' : 'Disconnected (Main)';
-        return;
-    }
+      els.connectionIndicator.className = 'card-connection-indicator disconnected';
+      els.connectionIndicator.title = connectionStatusIndicator.classList.contains('connecting') ? 'Connecting...' : 'Disconnected (Main)';
+      return;
+  }
 
-    cardElement.classList.remove('card-offline');
-    els.expandButton.disabled = false;
-    cardElement.dataset.charname = charName;
+  cardElement.classList.remove('card-offline');
+  els.expandButton.disabled = false;
+  cardElement.dataset.charname = charName;
 
-    const isCharConnected = (data.CONNECTED === "YES");
-    els.connectionIndicator.className = `card-connection-indicator ${isCharConnected ? 'connected' : 'disconnected'}`;
-    els.connectionIndicator.title = isCharConnected ? 'Connected' : 'Disconnected (Character)';
+  const isCharConnected = (data.CONNECTED === "YES");
+  els.connectionIndicator.className = `card-connection-indicator ${isCharConnected ? 'connected' : 'disconnected'}`;
+  els.connectionIndicator.title = isCharConnected ? 'Connected' : 'Disconnected (Character)';
 
-    const charClass = data.CLASS || "N/A";
-    const hp = parseInt(data.HEALTH || 0);
-    const hpMax = Math.max(1, parseInt(data.HEALTH_MAX || 1));
-    const mana = parseInt(data.MANA || 0);
-    const manaMax = Math.max(1, parseInt(data.MANA_MAX || 1));
-    const blood = parseInt(data.BLOOD || 0);
-    const affectsData = data.AFFECTS;
-    const favor = data.FAVOR;
-    const styleValue = data.STYLE ?? data.COMBAT_STYLE;
-    const oppHp = data.OPPONENT_HEALTH;
-    const oppNameRaw = data.OPPONENT_NAME;
-    const lagValue = data.WAIT_TIME ?? "";
-    const eqHits = data.EQUIP_HITS;
-    const flyingValue = data.FLYING;
-    const visValue = data.VIS;
-    const alignmentValue = data.ALIGNMENT; // ADDED
+  const charClass = data.CLASS || "N/A";
+  const hp = parseInt(data.HEALTH || 0);
+  const hpMax = Math.max(1, parseInt(data.HEALTH_MAX || 1));
+  const mana = parseInt(data.MANA || 0);
+  const manaMax = Math.max(1, parseInt(data.MANA_MAX || 1));
+  const blood = parseInt(data.BLOOD || 0);
+  const affectsData = data.AFFECTS;
+  const favor = data.FAVOR;
+  const styleValue = data.STYLE ?? data.COMBAT_STYLE;
+  const oppHp = data.OPPONENT_HEALTH;
+  const oppNameRaw = data.OPPONENT_NAME;
+  const lagValue = data.WAIT_TIME ?? "";
+  const eqHits = data.EQUIP_HITS;
+  const flyingValue = data.FLYING;
+  const visValue = data.VIS;
+  const alignmentValue = data.ALIGNMENT; 
 
-    els.nameText.textContent = data.CHARACTER_NAME || charName;
+  els.nameText.textContent = data.CHARACTER_NAME || charName;
 
-    let lagPercentage = 0;
-    let lagClass = "";
-    let lagTitle = "Lag: Unknown";
-    if (lagValue === "!!!!!") { lagPercentage = 100; lagClass = "lag-critical"; lagTitle = "Lag: Critical (!!!!!)"; }
-    else {
-        const sanitizedLag = String(lagValue).replace(/[^|]/g, '');
-        const pipeCount = sanitizedLag.length;
-        if (pipeCount === 0) { lagPercentage = 0; lagTitle = "Lag: OK (0)"; }
-        else if (pipeCount <= 3) { lagClass = "lag-ok"; lagPercentage = pipeCount * 20; lagTitle = `Lag: OK (${pipeCount})`;}
-        else if (pipeCount === 4) { lagPercentage = 80; lagClass = "lag-high"; lagTitle = "Lag: High (4)";}
-        else { lagPercentage = 100; lagClass = "lag-high"; lagTitle = `Lag: High (${pipeCount}+)`;}
-    }
-    if (els.lagBarFg) els.lagBarFg.style.width = `${lagPercentage}%`;
-    if (els.lag) {
-        els.lag.className = 'char-lag';
-        if (lagClass) els.lag.classList.add(lagClass);
-        els.lag.title = lagTitle;
-    }
+  let lagPercentage = 0;
+  let lagClass = "";
+  let lagTitle = "Lag: Unknown";
+  if (lagValue === "!!!!!") { lagPercentage = 100; lagClass = "lag-critical"; lagTitle = "Lag: Critical (!!!!!)"; }
+  else {
+      const sanitizedLag = String(lagValue).replace(/[^|]/g, '');
+      const pipeCount = sanitizedLag.length;
+      if (pipeCount === 0) { lagPercentage = 0; lagTitle = "Lag: OK (0)"; }
+      else if (pipeCount <= 3) { lagClass = "lag-ok"; lagPercentage = pipeCount * 20; lagTitle = `Lag: OK (${pipeCount})`;}
+      else if (pipeCount === 4) { lagPercentage = 80; lagClass = "lag-high"; lagTitle = "Lag: High (4)";}
+      else { lagPercentage = 100; lagClass = "lag-high"; lagTitle = `Lag: High (${pipeCount}+)`;}
+  }
+  if (els.lagBarFg) els.lagBarFg.style.width = `${lagPercentage}%`;
+  if (els.lag) {
+      els.lag.className = 'char-lag';
+      if (lagClass) els.lag.classList.add(lagClass);
+      els.lag.title = lagTitle;
+  }
 
-    els.class.textContent = charClass;
-    updateBar(els.hpBarFg, els.hpBarText, hp, hpMax, 'HP');
+  els.class.textContent = charClass;
+  updateBar(els.hpBarFg, els.hpBarText, hp, hpMax, 'HP');
 
-    if (VAMPIRE_CLASSES.has(charClass)) {
-         updateBar(els.resourceBarFg, els.resourceBarText, blood, BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
-    } else {
-         updateBar(els.resourceBarFg, els.resourceBarText, mana, manaMax, 'Mana', els.resourceBar, els.resourceLabel);
-    }
+  if (VAMPIRE_CLASSES.has(charClass)) {
+       updateBar(els.resourceBarFg, els.resourceBarText, blood, BLOOD_MAX, 'Blood', els.resourceBar, els.resourceLabel);
+  } else {
+       updateBar(els.resourceBarFg, els.resourceBarText, mana, manaMax, 'Mana', els.resourceBar, els.resourceLabel);
+  }
 
-    const oppHpIsValid = (oppHp !== undefined && oppHp !== null && oppHp !== "N/A");
-    const isVisuallyBlind = (oppNameRaw === 'You cannot see your opponent.');
-    if (oppHpIsValid) {
-         let oppName = oppNameRaw || "Enemy";
-         if (oppName.length > MAX_OPPONENT_NAME_LENGTH) oppName = oppName.substring(0, MAX_OPPONENT_NAME_LENGTH) + "...";
-         els.opponentLabel.textContent = oppName;
-         els.opponentLabel.title = (oppNameRaw && oppNameRaw.length > MAX_OPPONENT_NAME_LENGTH) ? oppNameRaw : oppName;
-         els.opponentValue.textContent = `${oppHp}%`;
-         els.opponentLine.style.display = 'flex';
-    } else {
-         els.opponentLine.style.display = 'none';
-         els.opponentLabel.textContent = `Opponent`;
-         els.opponentLabel.title = '';
-         els.opponentValue.textContent = `N/A`;
-    }
+  // --- MODIFIED OPPONENT LINE LOGIC ---
+  const oppNameIsValid = typeof oppNameRaw === 'string' && oppNameRaw !== "";
+  const isVisuallyBlind = (oppNameRaw === 'You cannot see your opponent.'); // This definition is fine here
 
-    const favorIsValid = (favor !== undefined && favor !== null && favor !== "N/A");
-    const styleIsValid = (styleValue !== undefined && styleValue !== null && styleValue !== "");
-    const eqHitsIsValid = (eqHits !== undefined && eqHits !== null && eqHits !== "");
-    const flyKeyExists = data.hasOwnProperty('FLYING');
-    const visKeyExists = data.hasOwnProperty('VIS');
-    const alignmentIsValid = (alignmentValue !== undefined && alignmentValue !== null && alignmentValue !== ""); // ADDED
-    let showStylePart = false, showEqHitsPart = false, showFlyPart = false, showVisPart = false, showAlignmentPart = false, showFavorPart = false; // ADDED showAlignmentPart
+  if (oppNameIsValid) {
+       els.opponentLine.style.display = 'flex';
 
-    if (styleIsValid) { els.stylePart.textContent = `Style: ${String(styleValue)}`; showStylePart = true; }
-    if (eqHitsIsValid) { els.eqHitsPart.textContent = `EQ Hits: ${String(eqHits)}`; showEqHitsPart = true; }
-    if (flyKeyExists) { showFlyPart = true; if (els.flyCheckbox) els.flyCheckbox.checked = (flyingValue === 'Y'); } else { if (els.flyCheckbox) els.flyCheckbox.checked = false; }
-    if (visKeyExists) { showVisPart = true; if (els.visPart) els.visPart.textContent = `Vis: ${(visValue === null || visValue === undefined) ? "(None)" : String(visValue)}`; }
-    if (alignmentIsValid) { els.alignmentPart.textContent = `Align: ${String(alignmentValue)}`; showAlignmentPart = true; } // ADDED
-    if (favorIsValid) { els.favorPart.textContent = `Favor: ${String(favor)}`; showFavorPart = true; }
+       let displayName = oppNameRaw;
+       if (displayName.length > MAX_OPPONENT_NAME_LENGTH) {
+           displayName = displayName.substring(0, MAX_OPPONENT_NAME_LENGTH) + "...";
+       }
+       els.opponentLabel.textContent = displayName;
+       // Set title to the full raw name if it was truncated for display
+       els.opponentLabel.title = (oppNameRaw.length > MAX_OPPONENT_NAME_LENGTH) ? oppNameRaw : displayName;
 
-    els.stylePart.style.display = showStylePart ? 'inline' : 'none';
-    els.eqHitsPart.style.display = showEqHitsPart ? 'inline' : 'none';
-    els.flyPart.style.display = showFlyPart ? 'inline' : 'none';
-    els.visPart.style.display = showVisPart ? 'inline' : 'none';
-    els.alignmentPart.style.display = showAlignmentPart ? 'inline' : 'none'; // ADDED
-    els.favorPart.style.display = showFavorPart ? 'inline' : 'none';
-    els.favorStyleLine.style.display = (showStylePart || showEqHitsPart || showFlyPart || showVisPart || showAlignmentPart || showFavorPart) ? 'flex' : 'none'; // UPDATED condition
+       // Handle opponent HP for the value part
+       const oppHpDisplayIsValid = (oppHp !== undefined && oppHp !== null && oppHp !== "N/A");
+       if (oppHpDisplayIsValid) {
+           els.opponentValue.textContent = `${oppHp}%`;
+       } else {
+           els.opponentValue.textContent = "N/A"; // Or other placeholder if HP is not available but name is
+       }
+  } else {
+       els.opponentLine.style.display = 'none';
+       // Reset opponent info to defaults (consistent with clearCard)
+       els.opponentLabel.textContent = "Opponent HP:";
+       els.opponentLabel.title = '';
+       els.opponentValue.textContent = "N/A";
+  }
+  // --- END OF MODIFIED OPPONENT LINE LOGIC ---
 
-    const { affectsStr, hasSanctuary } = parseAffects(affectsData);
-    if (affectsStr) {
-        els.affectsText.textContent = affectsStr;
-        els.affectsSection.style.display = 'block';
-    } else {
-        els.affectsSection.style.display = 'none';
-        els.affectsText.textContent = '';
-    }
-    els.blindnessIndicator.style.display = isVisuallyBlind ? 'block' : 'none';
-    els.noSancIndicator.style.display = (!hasSanctuary && affectsStr) ? 'block' : 'none';
+  const favorIsValid = (favor !== undefined && favor !== null && favor !== "N/A");
+  const styleIsValid = (styleValue !== undefined && styleValue !== null && styleValue !== "");
+  const eqHitsIsValid = (eqHits !== undefined && eqHits !== null && eqHits !== "");
+  const flyKeyExists = data.hasOwnProperty('FLYING');
+  const visKeyExists = data.hasOwnProperty('VIS');
+  const alignmentIsValid = (alignmentValue !== undefined && alignmentValue !== null && alignmentValue !== ""); 
+  let showStylePart = false, showEqHitsPart = false, showFlyPart = false, showVisPart = false, showAlignmentPart = false, showFavorPart = false; 
 
-    els.expandButton.textContent = isExpanded ? "-" : "+";
-    if (isExpanded) {
-         els.expandedText.textContent = formatFullData(data);
-         els.expandedSection.style.display = 'block';
-    } else {
-         els.expandedSection.style.display = 'none';
-    }
+  if (styleIsValid) { els.stylePart.textContent = `Style: ${String(styleValue)}`; showStylePart = true; }
+  if (eqHitsIsValid) { els.eqHitsPart.textContent = `EQ Hits: ${String(eqHits)}`; showEqHitsPart = true; }
+  if (flyKeyExists) { showFlyPart = true; if (els.flyCheckbox) els.flyCheckbox.checked = (flyingValue === 'Y'); } else { if (els.flyCheckbox) els.flyCheckbox.checked = false; }
+  if (visKeyExists) { showVisPart = true; if (els.visPart) els.visPart.textContent = `Vis: ${(visValue === null || visValue === undefined) ? "(None)" : String(visValue)}`; }
+  if (alignmentIsValid) { els.alignmentPart.textContent = `Align: ${String(alignmentValue)}`; showAlignmentPart = true; } 
+  if (favorIsValid) { els.favorPart.textContent = `Favor: ${String(favor)}`; showFavorPart = true; }
+
+  els.stylePart.style.display = showStylePart ? 'inline' : 'none';
+  els.eqHitsPart.style.display = showEqHitsPart ? 'inline' : 'none';
+  els.flyPart.style.display = showFlyPart ? 'inline' : 'none';
+  els.visPart.style.display = showVisPart ? 'inline' : 'none';
+  els.alignmentPart.style.display = showAlignmentPart ? 'inline' : 'none'; 
+  els.favorPart.style.display = showFavorPart ? 'inline' : 'none';
+  els.favorStyleLine.style.display = (showStylePart || showEqHitsPart || showFlyPart || showVisPart || showAlignmentPart || showFavorPart) ? 'flex' : 'none'; 
+
+  const { affectsStr, hasSanctuary } = parseAffects(affectsData);
+  if (affectsStr) {
+      els.affectsText.textContent = affectsStr;
+      els.affectsSection.style.display = 'block';
+  } else {
+      els.affectsSection.style.display = 'none';
+      els.affectsText.textContent = '';
+  }
+  els.blindnessIndicator.style.display = isVisuallyBlind ? 'block' : 'none';
+  els.noSancIndicator.style.display = (!hasSanctuary && affectsStr) ? 'block' : 'none';
+
+  els.expandButton.textContent = isExpanded ? "-" : "+";
+  if (isExpanded) {
+       els.expandedText.textContent = formatFullData(data);
+       els.expandedSection.style.display = 'block';
+  } else {
+       els.expandedSection.style.display = 'none';
+  }
 }
 
 
