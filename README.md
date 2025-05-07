@@ -118,7 +118,7 @@ different host or port, you **must** update the URL in the client script.
     5.  **Modify URL if needed:** The script sends data to
         `http://localhost:8080/update`. If your server runs elsewhere, edit the
         URL in the `#ALIAS sendData` line.
-    6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{myCharacter}
+    6.  If you do not use autologin, you will need to change {CHARACTER_NAME}{%char} to {CHARACTER_NAME}{Thoric} or {CHARACTER_NAME}{@character} where you define the variable.
     7.  Populate variables like `@curHP` `@curMana` etc. from your prompt. You need to build a string like `{OPPONENT_HEALTH}{A dragon}` for the `@opponentHP` or `@opponentName` variables.
 *   **Functionality**:
     *   Defines an alias `buildData` to construct the `{key}{value}` payload.
