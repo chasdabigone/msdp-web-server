@@ -170,8 +170,8 @@ different host or port, you **must** update the URL in the client script.
     python server.py
     ```
     The server will start, respecting environment variables (e.g., from
-    `python_server/.env` or set in the shell). By default (if `SERVER_HOST` is
-    `localhost`), it listens on `http://localhost:SERVER_PORT`.
+    `python_server/.env` or set in the shell). By default (if `HTTP_HOST` is
+    `localhost`), it listens on `http://localhost:HTTP_PORT`.
 
 #### b. Rust Server
 
@@ -211,13 +211,13 @@ different host or port, you **must** update the URL in the client script.
         `rust_server` directory.
 *   **Access**:
     Once a backend server is running, open your web browser and go to
-    `http://<configured_server_host>:<configured_server_port>/`.
+    `http://<configured_http_host>:<configured_http_port>/`.
     For example, if using defaults: `http://localhost:8080/`.
 *   **Configuration**:
-    *   The web viewer connects to `ws://<SERVER_HOST>:<SERVER_PORT>/ws`.
+    *   The web viewer connects to `ws://<HTTP_HOST>:<HTTP_PORT>/ws`.
     *   If you change the server's host or port from the defaults
-        (`localhost:8080`), you **must** update the `SERVER_HOST` and
-        `SERVER_PORT` JavaScript constants at the top of the `<script>`
+        (`localhost:8080`), you **must** update the `HTTP_HOST` and
+        `HTTP_PORT` JavaScript constants at the top of the `<script>`
         section in `script.js`.
 *   **Features**:
     *   Dynamic character cards, dark mode toggle, collapsible list, expandable
