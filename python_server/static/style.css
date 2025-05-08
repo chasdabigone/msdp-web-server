@@ -1,12 +1,13 @@
-/* --- Configuration (Mirrors Python where applicable) --- */
 :root {
   --max-cards: 16;
   --blood-max: 60;
   --max-opponent-name-length: 20;
-  --update-interval-ms: 150; /* How often JS checks for updates (not WS rate) */
+  --update-interval-ms: 150;
   --reconnect-delay-ms: 5000;
+  --show-lag-indicator: true;
+  --show-no-sanc-indicator: true;
+  --show-blindness-indicator: true;
 
-  /* --- Light Theme Colors (Default) --- */
   --bg-color: #f0f0f0;
   --panel-bg: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%);
   --card-bg: #ffffff;
@@ -14,11 +15,11 @@
   --text-color: #333333;
   --secondary-text-color: #555555;
   --title-color: #003366;
-  --hp-bar-color: #dc3545; /* red */
-  --mana-bar-color: #007bff; /* blue */
-  --blood-bar-color: #8b0000; /* darkred */
-  --bar-bg-color: #e9ecef; /* light grey */
-  --indicator-color: #dc3545; /* red */
+  --hp-bar-color: #dc3545;
+  --mana-bar-color: #007bff;
+  --blood-bar-color: #8b0000;
+  --bar-bg-color: #e9ecef;
+  --indicator-color: #dc3545;
   --button-bg: #e0e0e0;
   --button-hover-bg: #d0d0d0;
   --list-hover-bg: #e8f0fe;
@@ -34,14 +35,12 @@
   --scrollbar-thumb: #ccc;
   --scrollbar-thumb-hover: #aaa;
 
-  /* --- Status Colors (Used by both themes) --- */
-  --status-connected-color: #28a745; /* green */
-  --status-disconnected-color: #dc3545; /* red */
-  --status-connecting-color: #ffc107; /* yellow */
-  --status-lag-warn-color: #ff8c00; /* orange */
+  --status-connected-color: #28a745;
+  --status-disconnected-color: #dc3545;
+  --status-connecting-color: #ffc107;
+  --status-lag-warn-color: #ff8c00;
 }
 
-/* --- Dark Theme Colors --- */
 .dark-mode {
   --bg-color: #1a1a1a;
   --panel-bg: linear-gradient(180deg, #2d2d2d 0%, #252525 100%);
@@ -49,12 +48,12 @@
   --border-color: #454545;
   --text-color: #e0e0e0;
   --secondary-text-color: #bbbbbb;
-  --title-color: #7aa0cc; /* Lighter blue for dark bg */
-  --hp-bar-color: #e54857; /* Slightly brighter red */
-  --mana-bar-color: #3391ff; /* Slightly brighter blue */
-  --blood-bar-color: #a52a2a; /* Slightly brighter dark red */
+  --title-color: #7aa0cc;
+  --hp-bar-color: #e54857;
+  --mana-bar-color: #3391ff;
+  --blood-bar-color: #a52a2a;
   --bar-bg-color: #404040;
-  --indicator-color: #e54857; /* Match HP bar */
+  --indicator-color: #e54857;
   --button-bg: #444444;
   --button-hover-bg: #555555;
   --list-hover-bg: #3a3a3a;
@@ -71,7 +70,6 @@
   --scrollbar-thumb-hover: #777;
 }
 
-/* --- Basic Reset & Body --- */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -84,79 +82,75 @@ html, body {
   background-color: var(--bg-color);
   color: var(--text-color);
   font-size: 14px;
-  overflow: hidden; /* Prevent body scrollbars, manage scrolling in panels */
-  transition: background-color 0.3s ease, color 0.3s ease; /* Theme transition */
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Standard scrollbar colors */
-  position: relative; /* Needed for absolute positioning of theme toggle */
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  position: relative;
 }
 
-/* --- Theme Toggle Button (Top Right) --- */
-#theme-toggle {
-  position: absolute; /* Position relative to body */
+#settings-toggle {
+  position: fixed;
   top: 10px;
   right: 15px;
-  z-index: 100; /* Ensure it's above other content */
+  z-index: 1001;
   cursor: pointer;
   user-select: none;
-  font-size: 1.4em; /* Adjust size as needed */
-  padding: 2px 5px;
+  font-size: 1.3em;
+  padding: 4px;
   border-radius: 5px;
   background-color: var(--button-bg);
   color: var(--text-color);
   border: 1px solid var(--border-color);
   transition: background-color 0.1s ease, color 0.3s ease, border-color 0.3s ease;
-  line-height: 1; /* Helps vertical alignment */
+  line-height: 1;
 }
-#theme-toggle:hover {
+#settings-toggle:hover {
   background-color: var(--button-hover-bg);
 }
 
-
-/* --- Main Layout --- */
 .container {
   display: flex;
-  height: 100vh; /* Full viewport height */
-  padding: 10px; /* Default padding */
+  height: 100vh;
+  padding: 10px;
   gap: 10px;
 }
 
-/* Styling for the list panel itself */
 .list-panel {
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  flex: 0 0 200px; /* Fixed width, don't grow or shrink */
-  display: flex; /* Keep flex for internal layout */
+  flex: 0 0 200px;
+  display: flex;
   flex-direction: column;
-  overflow: hidden; /* Start with hidden overflow */
-  transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, max-height 0.3s ease-in-out, background 0.3s ease, border-color 0.3s ease; /* Added max-height */
-  min-width: 200px; /* Explicit min-width for transition */
-  max-height: calc(100vh - 20px); /* Adjust max-height based on container padding */
+  overflow: hidden;
+  transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, max-height 0.3s ease-in-out, background 0.3s ease, border-color 0.3s ease;
+  min-width: 200px;
+  max-height: calc(100vh - 20px);
 }
 
 #list-panel-header {
   cursor: pointer;
-  user-select: none; /* Prevent text selection on click */
-  position: relative; /* Needed if you wanted absolute positioning inside */
+  user-select: none;
+  position: relative;
   font-size: 1.1em;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
   color: var(--title-color);
   white-space: nowrap;
-  display: flex; /* Use flexbox for alignment */
-  align-items: center; /* Vertically align items */
+  display: flex;
+  align-items: center;
   transition: color 0.3s ease, border-color 0.3s ease;
 }
 
 #connection-status-indicator {
   display: inline-block;
-  width: 10px; /* Size of the circle */
+  width: 10px;
   height: 10px;
-  border-radius: 50%; /* Make it a circle */
-  margin-right: 8px; /* Space between circle and toggle */
-  flex-shrink: 0; /* Prevent shrinking */
-  background-color: var(--status-connecting-color); /* Default color */
-  transition: background-color 0.3s ease; /* Smooth color change */
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+  background-color: var(--status-connecting-color);
+  transition: background-color 0.3s ease;
   border: 1px solid rgba(0, 0, 0, 0.2);
 }
 .dark-mode #connection-status-indicator {
@@ -168,19 +162,19 @@ html, body {
 
 
 #collapse-toggle {
-  display: inline-block; /* Allow sizing and margins */
-  width: 18px;          /* Give it some space */
+  display: inline-block;
+  width: 18px;
   height: 18px;
-  line-height: 16px;    /* Vertically center arrow */
+  line-height: 16px;
   text-align: center;
-  margin-right: 4px;    /* Space between arrow and "Characters" */
+  margin-right: 4px;
   font-size: 0.8em;
   border: 1px solid var(--border-color);
   border-radius: 3px;
   background-color: var(--button-bg);
   color: var(--text-color);
   transition: background-color 0.1s ease, color 0.3s ease, border-color 0.3s ease;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
 }
 #list-panel-header:hover #collapse-toggle {
   background-color: var(--button-hover-bg);
@@ -195,10 +189,9 @@ html, body {
 
 #character-list {
   list-style: none;
-  overflow-y: auto; /* Enable vertical scrolling */
-  flex-grow: 1; /* Take remaining space in the panel */
+  overflow-y: auto;
+  flex-grow: 1;
   padding: 5px 0;
-  /* Add scrollbar styles */
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 #character-list::-webkit-scrollbar { width: 8px; }
@@ -208,33 +201,33 @@ html, body {
 
 
 #character-list li {
-  padding: 6px 9px 6px 12px; /* Adjusted left padding slightly for border */
+  padding: 6px 9px 6px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--list-separator-color);
-  user-select: none; /* Prevent text selection on click */
+  user-select: none;
   font-size: 0.9em;
-  transition: background-color 0.1s ease-in-out, border-left-color 0.1s ease-in-out, border-bottom-color 0.3s ease, color 0.3s ease; /* Added color transition */
+  transition: background-color 0.1s ease-in-out, border-left-color 0.1s ease-in-out, border-bottom-color 0.3s ease, color 0.3s ease;
   display: flex;
-  justify-content: space-between; /* Push name left, icon right */
-  align-items: center; /* Vertically align */
-  gap: 5px; /* Space between name and icon */
-  border-left: 3px solid transparent; /* Reserve space for selected border */
-  color: var(--text-color); /* Ensure list item text color changes */
+  justify-content: space-between;
+  align-items: center;
+  gap: 5px;
+  border-left: 3px solid transparent;
+  color: var(--text-color);
 }
-#character-list li .list-char-name {
-   white-space: nowrap; /* Prevent list item text wrapping */
+#character-list li .list-char-name-in-list {
+   white-space: nowrap;
    overflow: hidden;
    text-overflow: ellipsis;
-   flex-grow: 1; /* Allow name to take available space */
+   flex-grow: 1;
 }
 #character-list li .list-char-indicator {
   display: inline-block;
-  width: 8px; /* Slightly smaller than main indicator */
+  width: 8px;
   height: 8px;
   border-radius: 50%;
-  flex-shrink: 0; /* Don't shrink */
+  flex-shrink: 0;
   border: 1px solid rgba(0, 0, 0, 0.15);
-  background-color: var(--status-disconnected-color); /* Default to disconnected */
+  background-color: var(--status-disconnected-color);
   transition: background-color 0.3s ease;
 }
 .dark-mode #character-list li .list-char-indicator {
@@ -258,15 +251,15 @@ html, body {
 
 #character-list li.selected {
   background-color: var(--list-selected-bg);
-  font-weight: bold; /* Keep selected bold */
+  font-weight: bold;
   border-left: 3px solid var(--list-selected-border-color);
-  padding-left: 9px; /* Reduce left padding to account for border width */
+  padding-left: 9px;
 }
 
 .list-panel.collapsed {
-  flex-basis: 40px; /* Width when collapsed */
-  min-width: 40px;  /* Allow shrinking */
-  max-height: 40px; /* Explicit max-height when collapsed */
+  flex-basis: 40px;
+  min-width: 40px;
+  max-height: 40px;
 }
 
 .list-panel.collapsed #character-list {
@@ -277,40 +270,38 @@ html, body {
 }
 
 .card-panel {
-  flex-grow: 1; /* Take remaining horizontal space */
-  background-color: transparent; /* Use body background */
-  overflow-y: auto; /* Allow scrolling if cards overflow */
-  padding: 5px; /* Padding around the grid */
+  flex-grow: 1;
+  background-color: transparent;
+  overflow-y: auto;
+  padding: 5px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Responsive columns */
-  gap: 10px; /* Space between cards */
-  align-content: start; /* Align cards to the top */
-  max-height: calc(100vh - 20px); /* Adjust max-height based on container padding */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  align-content: start;
+  max-height: calc(100vh - 20px);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
-/* WebKit Scrollbar for Card Panel */
 .card-panel::-webkit-scrollbar { width: 8px; }
 .card-panel::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 .card-panel::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
 .card-panel::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 
-/* --- Character Card Styling --- */
 .character-card {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 5px;
-  padding: 12px; /* Slightly increased padding */
+  padding: 12px;
   position: relative;
   box-shadow: var(--card-shadow);
-  overflow: hidden; /* Clip content */
-  display: flex; /* Use flex for internal layout */
+  overflow: hidden;
+  display: flex;
   flex-direction: column;
   transition: box-shadow 0.2s ease, opacity 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
-  min-height: 280px; /* Ensure consistent height baseline */
+  min-height: 280px;
 }
 .character-card.hidden {
-  display: none; /* Hide unused card slots */
+  display: none;
 }
 
 .character-card:hover {
@@ -322,13 +313,12 @@ html, body {
 }
 
 .card-content {
-  flex-grow: 1; /* Allows content to fill space */
-  overflow-y: auto; /* Allow card content to scroll if needed */
-  padding-right: 5px; /* Space for scrollbar if needed */
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Standard scrollbar colors */
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 5px;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-/* Scrollbar styling (WebKit specific) */
 .card-content::-webkit-scrollbar {
   width: 6px;
 }
@@ -349,31 +339,27 @@ html, body {
   margin-bottom: 8px;
 }
 
-/* --- MODIFIED: Lag Bar Positioning Rules --- */
 .char-name {
   font-size: 1.15em;
   font-weight: bold;
   color: var(--title-color);
   margin-bottom: 2px;
-  position: relative; /* Needed for absolute positioning of lag bar */
+  position: relative;
   display: block;
   transition: color 0.3s ease;
-  min-height: 20px; /* Add min-height to ensure space */
+  min-height: 20px;
 }
 
 .char-name-text {
   word-break: break-all;
-  padding-right: 5px; /* Give text some padding */
+  padding-right: 5px;
 }
 
 .char-lag {
-  /* Position absolutely within .char-name */
   position: absolute;
-  top: 7px;  /* Moved lower */
-  right: 30px; /* Moved left */
-  z-index: 2; /* Ensure it's above text */
-
-  /* Keep original size and background */
+  top: 7px;
+  right: 30px;
+  z-index: 2;
   display: inline-block;
   width: 50px;
   height: 10px;
@@ -383,196 +369,175 @@ html, body {
   transition: background-color 0.3s ease;
 }
 
-/* Style for Lag Indicator Foreground (Unchanged) */
 .lag-bar-fg {
   display: block;
   height: 100%;
-  width: 0%; /* Set by JS */
-  background-color: var(--status-connected-color); /* Default/initial color */
-  border-radius: 2px; /* Match parent rounding */
+  width: 0%;
+  background-color: var(--status-connected-color);
+  border-radius: 2px;
   transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 
-/* Lag Color Classes (target the foreground - Unchanged) */
-.char-lag.lag-ok .lag-bar-fg { background-color: var(--status-connected-color); } /* Green */
-.char-lag.lag-high .lag-bar-fg { background-color: var(--status-lag-warn-color); } /* Orange */
+.char-lag.lag-ok .lag-bar-fg { background-color: var(--status-connected-color); }
+.char-lag.lag-high .lag-bar-fg { background-color: var(--status-lag-warn-color); }
 .char-lag.lag-critical .lag-bar-fg {
-  background-color: var(--status-disconnected-color); /* Red */
-  animation: blink 1s infinite; /* Blinking animation */
+  background-color: var(--status-disconnected-color);
+  animation: blink 1s infinite;
 }
 
-/* Blinking Keyframes (Unchanged) */
 @keyframes blink {
-  50% {
-      opacity: 0.3;
-  }
+  50% { opacity: 0.3; }
 }
-/* --- END MODIFIED Lag Bar Rules --- */
-
 
 .char-class {
   font-size: 0.9em;
   font-style: italic;
   color: var(--secondary-text-color);
-  margin-bottom: 5px; /* Add space before first bar */
+  margin-bottom: 5px;
   transition: color 0.3s ease;
 }
 
-/* Stat Bars - Revised Layout */
 .stat-bar {
-  margin-bottom: 10px; /* Increased spacing between bars */
+  margin-bottom: 10px;
 }
 
-.bar-container { /* Styles for the bar's background/outline */
-  width: 100%; /* Take full width */
-  height: 12px; /* Bar height */
+.bar-container {
+  width: 100%;
+  height: 12px;
   background-color: var(--bar-bg-color);
   border-radius: 3px;
-  overflow: hidden; /* Keep fg bar clipped */
-  border: 1px solid var(--border-color); /* Outline */
-  margin-bottom: 3px; /* Space between bar and text */
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  margin-bottom: 3px;
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.bar-fg { /* Styles for the filled part */
+.bar-fg {
   height: 100%;
-  width: 0%; /* Set by JS */
-  border-radius: 2px 0 0 2px; /* Keep left radius inside */
-  transition: width 0.3s ease-in-out, background-color 0.3s ease; /* Added background-color transition */
+  width: 0%;
+  border-radius: 2px 0 0 2px;
+  transition: width 0.3s ease-in-out, background-color 0.3s ease;
 }
-/* Assign colors based on parent bar class */
 .hp-bar .bar-fg { background-color: var(--hp-bar-color); }
 .mana-bar .bar-fg { background-color: var(--mana-bar-color); }
 .blood-bar .bar-fg { background-color: var(--blood-bar-color); }
 
-.stat-text-line { /* Container for Label + Text */
-  display: flex; /* Use flexbox to position label and text */
-  justify-content: space-between; /* Pushes label left, text right */
-  align-items: center; /* Vertically align if needed */
+.stat-text-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   width: 100%;
-  font-size: 0.85em; /* Apply font size here */
-  padding: 0 1px; /* Optional small horizontal padding */
-  color: var(--text-color); /* Ensure text color updates */
+  font-size: 0.85em;
+  padding: 0 1px;
+  color: var(--text-color);
   transition: color 0.3s ease;
 }
 
 .bar-label {
-  font-weight: normal; /* Make label normal weight */
-  margin-right: 5px; /* Space after label */
-  white-space: nowrap; /* Prevent label wrapping */
-  flex-shrink: 0; /* Prevent label from shrinking */
+  font-weight: normal;
+  margin-right: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .bar-text {
-  font-weight: bold; /* Keep value bold */
-  text-align: right; /* Keep text aligned right */
-  flex-grow: 1; /* Allow text area to take remaining space */
+  font-weight: bold;
+  text-align: right;
+  flex-grow: 1;
 }
 
-/* === General Info Line Styling === */
 .info-line {
   font-size: 0.8em;
-  margin-bottom: 8px; /* Space below line */
-  margin-top: 8px; /* Space above line */
-  padding-top: 8px; /* Space between dashed border and text */
-  border-top: 1px dashed var(--separator-color); /* Use variable */
-  display: none; /* Hidden by default, shown by JS if they have content */
-  clear: both; /* Ensure it clears floats (like bar text) */
-  line-height: 1.4; /* Improve readability if text wraps */
-  color: var(--text-color); /* Ensure text color updates */
+  margin-bottom: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--separator-color);
+  display: none;
+  clear: both;
+  line-height: 1.4;
+  color: var(--text-color);
   transition: color 0.3s ease, border-top-color 0.3s ease;
 }
 
-/* Labels within info lines (e.g., "Opponent HP:") */
 .info-line-label {
-  font-weight: normal; /* Make label normal weight */
-  display: inline-block; /* Allows margin-right */
+  font-weight: normal;
+  display: inline-block;
   margin-right: 4px;
 }
-
-/* Values within info lines */
 .info-line-value {
-  font-weight: bold; /* Keep value bold */
+  font-weight: bold;
 }
 
-/* === Styling for the combined favor/style/etc line === */
 .favor-style-line {
-  display: none; /* Hidden by default, JS sets to 'flex' */
-  justify-content: flex-start; /* Align children to start */
-  align-items: baseline; /* Align text baselines */
-  gap: 10px; /* Add space between items */
-  flex-wrap: wrap; /* Allow wrapping on small screens */
+  display: none;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-
 .favor-style-line .favor-part,
 .favor-style-line .style-part,
 .favor-style-line .fly-part,
 .favor-style-line .vis-part,
-.favor-style-line .alignment-part, /* Added alignment-part */
+.favor-style-line .alignment-part,
 .favor-style-line .eq-hits-part {
-  font-weight: bold; /* Keep these values bold */
-  white-space: nowrap; /* Prevent wrapping within a part */
-  display: none; /* Hide parts individually by default */
+  font-weight: bold;
+  white-space: nowrap;
+  display: none;
 }
-
-/* Styling for the FLY checkbox */
 .favor-style-line .fly-part input[type="checkbox"] {
-  vertical-align: middle; /* Align checkbox with text */
-  margin: 0 0 0 2px; /* Small space after "FLY:" */
-  pointer-events: none; /* Crucial: Makes it non-interactive */
-  cursor: default;      /* Reinforces non-interactive look */
-  accent-color: var(--mana-bar-color); /* Sets the color *when checked* to mana blue */
-  width: 12px; /* Adjust size */
+  vertical-align: middle;
+  margin: 0 0 0 2px;
+  pointer-events: none;
+  cursor: default;
+  accent-color: var(--mana-bar-color);
+  width: 12px;
   height: 12px;
-  transition: opacity 0.2s ease; /* Optional: smooth visual transition */
+  transition: opacity 0.2s ease;
 }
-
-/* Dim the checkbox ONLY when it's NOT checked */
 .favor-style-line .fly-part input[type="checkbox"]:not(:checked) {
-  opacity: 0.6; /* Apply dimming only when unchecked */
+  opacity: 0.6;
 }
-
-/* Optional: Keep dark mode adjustments if needed */
 .dark-mode .favor-style-line .fly-part input[type="checkbox"] {
-   filter: brightness(1.2); /* Make checkbox slightly brighter overall in dark mode */
+   filter: brightness(1.2);
 }
 
-/* === MODIFIED Opponent Line Styling === */
+.info-bar-custom-item {
+  display: inline-block;
+  margin-right: 10px;
+}
+.info-bar-custom-item strong {
+    font-weight: bold;
+}
+
 .opponent-line {
-  display: none; /* Keep hidden by default */
-  /* Properties when shown by JS: */
-  /* display: flex; */
+  display: none;
   justify-content: space-between;
   align-items: baseline;
 }
-
-.opponent-line .info-line-label {
+.opponent-line .opponent-name-label {
   flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   display: inline-block;
-  font-weight: bold; /* ADDED: Make opponent name bold */
+  font-weight: bold;
 }
-.opponent-line .info-line-value {
+.opponent-line .opponent-hp-value {
   float: none;
   flex-shrink: 0;
   text-align: right;
   padding-left: 5px;
 }
 
-/* === END Info Line Styling === */
-
-
-/* Affects Section */
 .affects-section {
   margin-top: 8px;
   font-size: 0.8em;
   padding-top: 8px;
-  border-top: 1px dashed var(--separator-color); /* Use variable */
+  border-top: 1px dashed var(--separator-color);
   display: none;
   clear: both;
-  color: var(--text-color); /* Ensure text color updates */
+  color: var(--text-color);
   transition: color 0.3s ease, border-top-color 0.3s ease;
 }
 .affects-section h4 {
@@ -591,26 +556,23 @@ html, body {
   border: 1px solid var(--code-border-color);
   border-radius: 3px;
   font-size: 0.95em;
-  color: var(--text-color); /* Ensure code text color updates */
+  color: var(--text-color);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
-/* WebKit scrollbar styles for code blocks */
 .affects-text::-webkit-scrollbar { width: 6px; }
 .affects-text::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
 .affects-text::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 .affects-text::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
-
-/* Expanded Section */
 .expanded-section {
   margin-top: 10px;
   font-size: 0.8em;
   padding-top: 10px;
-  border-top: 1px solid var(--border-color); /* Use main border color */
+  border-top: 1px solid var(--border-color);
   display: none;
   clear: both;
-  color: var(--text-color); /* Ensure text color updates */
+  color: var(--text-color);
   transition: color 0.3s ease, border-top-color 0.3s ease;
 }
 .expanded-section h4 {
@@ -628,18 +590,15 @@ html, body {
   padding: 6px;
   border: 1px solid var(--code-border-color);
   border-radius: 3px;
-  color: var(--text-color); /* Ensure code text color updates */
+  color: var(--text-color);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
-/* WebKit scrollbar styles for code blocks */
 .expanded-text::-webkit-scrollbar { width: 6px; }
 .expanded-text::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
 .expanded-text::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 .expanded-text::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
-
-/* Indicators and Button */
 .card-connection-indicator {
   position: absolute;
   top: 6px;
@@ -655,12 +614,8 @@ html, body {
 .dark-mode .card-connection-indicator {
    border: 1px solid rgba(255, 255, 255, 0.2);
 }
-.card-connection-indicator.connected {
-  background-color: var(--status-connected-color);
-}
-.card-connection-indicator.disconnected {
-  background-color: var(--status-disconnected-color);
-}
+.card-connection-indicator.connected { background-color: var(--status-connected-color); }
+.card-connection-indicator.disconnected { background-color: var(--status-disconnected-color); }
 
 .expand-button {
   position: absolute;
@@ -681,13 +636,8 @@ html, body {
   z-index: 10;
   transition: background-color 0.1s ease, color 0.3s ease, border-color 0.3s ease;
 }
-.expand-button:hover {
-  background-color: var(--button-hover-bg);
-}
-.expand-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
+.expand-button:hover { background-color: var(--button-hover-bg); }
+.expand-button:disabled { cursor: not-allowed; opacity: 0.6; }
 
 .indicator {
   position: absolute;
@@ -695,204 +645,220 @@ html, body {
   font-size: 0.8em;
   font-weight: bold;
   color: var(--indicator-color);
-  background-color: rgba(255, 255, 255, 0.7); /* Keep light bg for visibility */
+  background-color: rgba(255, 255, 255, 0.7);
   padding: 0 3px;
   border-radius: 2px;
   display: none;
   z-index: 5;
 }
 .dark-mode .indicator {
-   background-color: rgba(0, 0, 0, 0.6); /* Darker bg for dark mode */
-   color: #ff6b81; /* Brighter red maybe */
+   background-color: rgba(0, 0, 0, 0.6);
+   color: #ff6b81;
 }
 .blindness-indicator { top: 28px; }
 .no-sanc-indicator { top: 46px; }
 
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    margin: 0;
+    position: absolute;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    width: 250px;
+    max-width: 250px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+.modal-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 1px solid var(--separator-color);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    color: var(--title-color);
+}
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.3em;
+    text-align: center;
+    flex-grow: 1;
+}
+.close-modal-button {
+    display: none;
+}
+.settings-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+.settings-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: var(--title-color);
+    text-align: left;
+}
+.settings-section p {
+    font-size: 0.9em;
+    line-height: 1.5;
+    color: var(--secondary-text-color);
+    margin-bottom: 8px;
+}
+#info-bar-keys-list {
+    list-style-type: none;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 4px;
+    background-color: var(--card-bg);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    text-align: left;
+}
+#info-bar-keys-list::-webkit-scrollbar { width: 6px; }
+#info-bar-keys-list::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px;}
+#info-bar-keys-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px;}
+#info-bar-keys-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
-/* --- Responsiveness --- */
+#info-bar-keys-list li {
+    margin-bottom: 8px;
+}
+#info-bar-keys-list label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: var(--text-color);
+}
+#info-bar-keys-list input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+    accent-color: var(--title-color);
+}
+#theme-toggle-modal-button {
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 0.9em;
+    color: inherit;
+    line-height: normal;
+    padding: 8px 15px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--button-bg);
+    cursor: pointer;
+    text-align: center;
+    display: inline-block;
+    transition: background-color 0.1s ease, border-color 0.3s ease;
+}
+#theme-toggle-modal-button:hover {
+    background-color: var(--button-hover-bg);
+}
 
-/* START - Added Rule for Desktop Container Padding */
 @media (min-width: 769px) {
   .container {
-      /* Add padding on the right to make space for the absolute theme toggle */
-      padding-right: 45px; /* Adjust this value as needed */
+      padding-right: 50px;
   }
-
-  /* Adjust list panel collapsed view */
   .list-panel.collapsed #list-panel-header {
-      flex-direction: column;  /* Stack items vertically */
-      align-items: center;     /* Center items horizontally */
-      justify-content: flex-start; /* Align items to the top */
-      padding: 5px 0;          /* Adjust padding for vertical layout */
-      overflow: hidden;        /* Ensure nothing spills out */
-      height: 100%;            /* Fill the 40px height */
-      border-bottom: none;     /* Remove border for cleaner look */
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 5px 0;
+      overflow: hidden;
+      height: 100%;
+      border-bottom: none;
   }
-
-  .list-panel.collapsed #connection-status-indicator {
-      margin-right: 0;        /* Remove side margin */
-      margin-bottom: 4px;     /* Add space below indicator */
-  }
-
-  .list-panel.collapsed #collapse-toggle {
-      margin-right: 0;        /* Remove side margin */
-      margin-top: 0;          /* Reset top margin if any */
-      margin-bottom: 0;       /* No bottom margin needed */
-  }
-
-  .list-panel.collapsed .list-panel-title-text {
-      display: none;
-  }
+  .list-panel.collapsed #connection-status-indicator { margin-right: 0; margin-bottom: 4px; }
+  .list-panel.collapsed #collapse-toggle { margin-right: 0; margin-top: 0; margin-bottom: 0; }
+  .list-panel.collapsed .list-panel-title-text { display: none; }
 }
-/* END - Added Rule for Desktop Container Padding */
-
 
 @media (max-width: 768px) {
-  #theme-toggle {
+  #settings-toggle {
       top: 8px;
       right: 10px;
       font-size: 1.2em;
-      /* No overlap issue here due to layout change */
   }
   .container {
       flex-direction: column;
-      padding: 5px; /* Mobile padding */
-      /* No need for extra right padding here */
+      padding: 5px;
   }
-
   .list-panel {
-      max-height: 35vh; /* This limits its height relative to viewport */
+      max-height: 35vh;
       flex: 0 0 auto;
       min-width: unset;
       width: 100%;
       margin-bottom: 10px;
-      transition: max-height 0.3s ease-in-out, background 0.3s ease, border-color 0.3s ease; /* Add theme transitions */
+      transition: max-height 0.3s ease-in-out, background 0.3s ease, border-color 0.3s ease;
       display: flex;
       flex-direction: column;
-       border: 1px solid var(--border-color);
+      border: 1px solid var(--border-color);
   }
-
   .list-panel.collapsed {
       flex-basis: auto;
       min-width: unset;
-      max-height: 40px; /* Keep explicit collapsed height */
+      max-height: 40px;
       overflow: hidden;
   }
-
-   .list-panel.collapsed #character-list {
-       display: none;
-   }
-
-   /* Keep header horizontal on mobile, even when collapsed */
+   .list-panel.collapsed #character-list { display: none; }
    .list-panel #list-panel-header {
       flex-direction: row;
       justify-content: flex-start;
       padding: 8px 12px;
       border-bottom: 1px solid var(--border-color);
-       height: auto;
+      height: auto;
    }
-   .list-panel.collapsed #list-panel-header {
-        border-bottom: none; /* Remove border when collapsed */
-   }
-
-    .list-panel #connection-status-indicator {
-        margin-right: 8px;
-        margin-bottom: 0; /* Ensure vertical alignment */
-    }
-     .list-panel #collapse-toggle {
-        margin-right: 4px;
-        margin-top: 0;
-        margin-bottom: 0; /* Override desktop collapse margin */
-     }
-
-   .list-panel .list-panel-title-text {
-      display: inline; /* Ensure title text shows */
-      margin-left: 4px;
-   }
-
-  #character-list {
-      overflow-y: auto;
-      flex-grow: 1;
-  }
-
+   .list-panel.collapsed #list-panel-header { border-bottom: none; }
+    .list-panel #connection-status-indicator { margin-right: 8px; margin-bottom: 0; }
+    .list-panel #collapse-toggle { margin-right: 4px; margin-top: 0; margin-bottom: 0; }
+   .list-panel .list-panel-title-text { display: inline; margin-left: 4px; }
+  #character-list { overflow-y: auto; flex-grow: 1; }
   .card-panel {
        flex-grow: 1;
-       min-height: 0; /* Allow shrinking */
+       min-height: 0;
        overflow-y: auto;
-       padding: 0; /* Remove padding around grid on mobile */
+       padding: 0;
        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
        width: 100%;
        align-content: start;
        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-       max-height: calc(100vh - 10px - 35vh - 10px); /* container padding - list height - gap */
-       /* Ensure scrollbar styles apply here too */
+       max-height: calc(100vh - 10px - 35vh - 10px - 40px);
   }
-
-   .stat-text-line {
-       font-size: 0.8em;
-   }
-
-   /* --- MODIFIED: Lag Bar Responsive --- */
-   .char-name {
-       min-height: 18px; /* Adjust min-height */
-   }
-   .char-name-text {
-       padding-right: 5px; /* Keep padding */
-   }
-   .char-lag {
-       width: 45px;
-       height: 9px;
-       top: 6px; /* Adjust slightly for smaller height */
-       right: 28px; /* Adjust slightly */
-   }
-   /* --- END Lag Bar Responsive --- */
-
-   .info-line {
-       font-size: 0.75em;
-   }
-   /* Adjust favor/style line spacing for mobile */
-   .favor-style-line {
-       gap: 6px;
-   }
+   .stat-text-line { font-size: 0.8em; }
+   .char-name { min-height: 18px; }
+   .char-name-text { padding-right: 5px; }
+   .char-lag { width: 45px; height: 9px; top: 6px; right: 28px; }
+   .info-line { font-size: 0.75em; }
+   .favor-style-line { gap: 6px; }
 }
+
 @media (max-width: 480px) {
-   #theme-toggle {
-       top: 6px;
-       right: 8px;
-       font-size: 1.1em;
-   }
-   .list-panel {
-       max-height: 30vh; /* Reduce list height slightly */
-   }
+   #settings-toggle { top: 6px; right: 8px; font-size: 1.1em; }
+   .container { padding: 5px; }
+   .list-panel { max-height: 30vh; }
    .card-panel {
-       grid-template-columns: 1fr; /* Single column */
-       max-height: calc(100vh - 10px - 30vh - 10px); /* Adjust max-height */
-   }
+       grid-template-columns: 1fr;
+       max-height: calc(100vh - 10px - 30vh - 10px - 35px);
+    }
    body { font-size: 13px; }
-
-   /* --- MODIFIED: Lag Bar Responsive (Small) --- */
-   .char-name {
-       font-size: 1.1em;
-       min-height: 16px; /* Adjust min-height */
-   }
-   .char-name-text {
-       padding-right: 5px; /* Keep padding */
-   }
-   .char-lag {
-       width: 40px;
-       height: 8px;
-       top: 5px; /* Adjust slightly for smaller height */
-       right: 25px; /* Adjust slightly */
-   }
-   /* --- END Lag Bar Responsive (Small) --- */
-
-   .info-line {
-       font-size: 0.75em;
-   }
-   #list-panel-header {
-       padding: 6px 8px; /* Slightly reduce padding */
-   }
-    #connection-status-indicator { margin-right: 5px; }
-    #collapse-toggle { margin-right: 3px; }
-    .list-panel-title-text { font-size: 1em; }
+   .char-name { font-size: 1.1em; min-height: 16px; }
+   .char-lag { width: 40px; height: 8px; top: 5px; right: 25px; }
+   #list-panel-header { padding: 6px 8px; }
+   #connection-status-indicator { margin-right: 5px; }
+   #collapse-toggle { margin-right: 3px; }
+   .list-panel-title-text { font-size: 1em; }
 }

@@ -6,9 +6,10 @@
     <title>Web Character Viewer</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <!-- Theme Toggle Button -->
-    <button id="theme-toggle" title="Toggle Theme">◐</button>
+<body class=""> <!-- 'dark-mode' class will be added here by JS -->
+
+    <!-- Settings Gear Icon - Moved to top right -->
+    <button id="settings-toggle" title="Settings">⚙️</button>
 
     <div class="container">
         <div class="list-panel">
@@ -16,6 +17,7 @@
                 <span id="connection-status-indicator" title="Connection Status"></span>
                 <span id="collapse-toggle" title="Collapse List">▼</span>
                 <span class="list-panel-title-text">Characters</span>
+                <!-- Gear icon removed from here -->
             </h2>
             <ul id="character-list">
             </ul>
@@ -24,13 +26,34 @@
         </div>
     </div>
 
-    <!-- Template for a character card -->
+    <!-- Settings Modal (remains the same) -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="close-modal-button" id="close-settings-modal">×</button>
+            </div>
+            <div class="settings-section">
+                <h3>Info Bar Items</h3>
+                <ul id="info-bar-keys-list">
+                    <!-- Checkboxes will be populated here by JS -->
+                </ul>
+            </div>
+            <div class="settings-section">
+                <button id="theme-toggle-modal-button">Toggle Dark/Light Mode</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template for a character card (remains the same) -->
     <template id="card-template">
         <div class="character-card hidden" data-charname="" data-is-expanded="false">
              <span class="card-connection-indicator" title="Connection Status"></span>
              <button class="expand-button" title="Expand/Minimize" disabled>+</button>
-             <div class="indicator blindness-indicator">blind</div>
-             <div class="indicator no-sanc-indicator">!sanc</div>
+             <div class="status-indicator-bar">
+                <div class="indicator blindness-indicator" title="Cannot see opponent">blind</div>
+                <div class="indicator no-sanc-indicator" title="No Sanctuary active">!sanc</div>
+             </div>
              <div class="card-content">
                  <div class="card-header">
                      <h3 class="char-name">
@@ -41,48 +64,31 @@
                      </h3>
                      <div class="char-class">Class</div>
                  </div>
-
                  <div class="stat-bar hp-bar">
-                     <div class="bar-container">
-                         <div class="bar-fg"></div>
-                     </div>
-                     <div class="stat-text-line">
-                         <span class="bar-label">HP:</span>
-                         <span class="bar-text">0 / 0</span>
-                     </div>
+                     <div class="bar-container"><div class="bar-fg"></div></div>
+                     <div class="stat-text-line"><span class="bar-label">HP:</span><span class="bar-text">0 / 0</span></div>
                  </div>
-
                  <div class="stat-bar resource-bar mana-bar">
-                      <div class="bar-container">
-                         <div class="bar-fg"></div>
-                     </div>
-                     <div class="stat-text-line">
-                         <span class="bar-label">Mana:</span>
-                         <span class="bar-text">0 / 0</span>
-                     </div>
+                      <div class="bar-container"><div class="bar-fg"></div></div>
+                     <div class="stat-text-line"><span class="bar-label">Mana:</span><span class="bar-text">0 / 0</span></div>
                  </div>
-
                  <div class="info-line opponent-line">
-                    <span class="info-line-label">Opponent HP:</span>
-                    <span class="info-line-value">N/A</span>
+                    <span class="info-line-label opponent-name-label">Opponent:</span>
+                    <span class="info-line-value opponent-hp-value">N/A</span>
                  </div>
-
                  <div class="info-line favor-style-line">
                      <span class="style-part">Style: N/A</span>
                      <span class="eq-hits-part">EQ Hits: N/A</span>
-                     <span class="fly-part">Flying: <input type="checkbox"></span>
+                     <span class="fly-part">Flying: <input type="checkbox" disabled></span>
                      <span class="vis-part">Vis: N/A</span>
-                     <span class="alignment-part">Align: N/A</span> <!-- ADDED ALIGNMENT -->
+                     <span class="alignment-part">Align: N/A</span>
                      <span class="favor-part">Favor: N/A</span>
                      <div class="custom-info-items-container"></div>
                  </div>
-
-
                  <div class="affects-section">
                      <h4>Spells:</h4>
                      <pre class="affects-text"></pre>
                  </div>
-
                  <div class="expanded-section">
                      <h4>Full Data:</h4>
                      <pre class="expanded-text"></pre>
