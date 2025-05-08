@@ -1,4 +1,4 @@
-const SERVER_HOST = "localhost";
+const SERVER_HOST = "129.158.239.187";
 const SERVER_PORT = 8080;
 
 let SHOW_LAG_INDICATOR, SHOW_NO_SANC_INDICATOR, SHOW_BLINDNESS_INDICATOR;
@@ -48,17 +48,17 @@ function openSettingsModal() {
 
     knownKeysForModal.clear();
     populateSettingsModal();
-    
+
     settingsModal.style.display = 'block';
 
     const buttonRect = settingsToggleButton.getBoundingClientRect();
-    
+
     const newTop = buttonRect.top;
     const newRightOffset = window.innerWidth - buttonRect.right;
 
     modalContent.style.top = `${newTop}px`;
     modalContent.style.right = `${newRightOffset}px`;
-    
+
     modalContent.style.left = 'auto';
     modalContent.style.bottom = 'auto';
 }
@@ -752,12 +752,16 @@ document.addEventListener('DOMContentLoaded', () => {
               collapseToggle.title = isCollapsed ? 'Expand List' : 'Collapse List';
             }
         } catch (e) { console.error("Failed to load collapse state:", e); }
+
+        // MODIFIED EVENT LISTENER START
         listPanelHeader.addEventListener('click', (event) => {
-            if (event.target === globalConnectionStatusIndicator ||
-                event.target === collapseToggle ||
-                globalConnectionStatusIndicator?.contains(event.target) ||
-                collapseToggle?.contains(event.target)
-                ) return;
+            // Only return (do nothing) if the click was on the globalConnectionStatusIndicator or its children.
+            if (globalConnectionStatusIndicator &&
+                (event.target === globalConnectionStatusIndicator || globalConnectionStatusIndicator.contains(event.target))) {
+                return;
+            }
+
+            // For any other click on the header (including the collapseToggle itself), proceed to toggle.
             const isCollapsed = listPanelElement.classList.toggle('collapsed');
             if(collapseToggle) {
               collapseToggle.textContent = isCollapsed ? '▶' : '▼';
@@ -766,6 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try { localStorage.setItem(LS_COLLAPSE_KEY, isCollapsed.toString()); }
             catch (e) { console.error("Failed to save collapse state:", e); }
         });
+        // MODIFIED EVENT LISTENER END
     }
 
     if (settingsToggleButton) {

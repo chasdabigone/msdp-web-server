@@ -747,6 +747,7 @@ html, body {
 }
 #info-bar-keys-list input[type="checkbox"] {
     margin-right: 8px;
+    cursor: pointer;
     vertical-align: middle;
     accent-color: var(--title-color);
 }
